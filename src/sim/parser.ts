@@ -124,5 +124,5 @@ export const HELP_TEXT = `Supported commands:
   git merge <branch> [--no-ff]   merge a branch
   git reset [--hard] [id]         move current branch back
   git tag <name> [id]             create a tag
-  clear                           clear the terminal
+  clear | cls                     clear the terminal
   help                            show this help`

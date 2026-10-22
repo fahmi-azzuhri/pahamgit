@@ -49,6 +49,8 @@ export default function App() {
       fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace",
       fontSize: 13,
       scrollback: 1000,
+      // engine output uses "\n" only: without this every new line keeps the previous column
+      convertEol: true,
     })
     const f = new FitAddon()
     x.loadAddon(f)
@@ -71,7 +73,7 @@ export default function App() {
       if (data === "\r") {
         const cmd = inputRef.current.trim()
         x.writeln("")
-        if (cmd === "clear") {
+        if (cmd === "clear" || cmd === "cls") {
           x.clear()
         } else if (cmd) {
           const res = runRef.current(cmd)
