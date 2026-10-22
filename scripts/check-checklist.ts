@@ -78,4 +78,13 @@ assert.deepEqual(
   "SCENARIOS and ROADMAP_ORDER must cover the same journeys",
 )
 
+// roadmap difficulty must never go backwards
+const rank = { Beginner: 0, Intermediate: 1, Advanced: 2 } as const
+const levels = ROADMAP_ORDER.map((id) => rank[getScenario(id).difficulty])
+assert.ok(
+  levels.every((lvl, i) => i === 0 || lvl >= levels[i - 1]),
+  "ROADMAP_ORDER must be Beginner → Intermediate → Advanced",
+)
+
+
 console.log("checklist sequential + sticky: OK")

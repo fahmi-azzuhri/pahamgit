@@ -786,20 +786,266 @@ export const SCENARIOS: Scenario[] = [
     build: initialRepo,
   },
 
+  {
+    id: "release-to-main",
+    title: "Merge Branch Release ke Main",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat branch `release`, commit perubahan, kembali ke `main`, lalu merge `release` dengan `--no-ff`.",
+    ],
+    checklist: [
+      {
+        id: "create-release",
+        label: "Buat branch `release`",
+        done: (s) => Boolean(s.branches["release"]),
+      },
+      {
+        id: "commit-release",
+        label: "Buat commit di `release`",
+        done: (s) => {
+          const r = s.branches["release"]
+          const m = s.branches["main"]
+          return Boolean(r && m && r !== m && isAncestor(s, m, r))
+        },
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "merge-release",
+        label: "Merge `release` ke `main` dengan `--no-ff`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const r = s.branches["release"]
+          return Boolean(m && r && s.commits[m]?.parents.length === 2 && isAncestor(s, r, m))
+        },
+      },
+    ],
+    hints: [
+      "Buat branch dengan `git checkout -b release`.",
+      "Commit perubahan, lalu kembali ke `main`.",
+      "Merge dengan `git merge --no-ff release`.",
+    ],
+    answer: [
+      "git checkout -b release",
+      'git commit -m "prepare release"',
+      "git checkout main",
+      "git merge --no-ff release",
+    ],
+    build: initialRepo,
+  },
+  {
+    id: "tag-merge-result",
+    title: "Tag Hasil Merge",
+    difficulty: "Intermediate",
+    instructions: [
+      "Merge branch `feature` ke `main` dengan `--no-ff`, lalu beri tag `v2.0.0` pada commit hasil merge.",
+    ],
+    checklist: [
+      {
+        id: "create-feature",
+        label: "Buat branch `feature`",
+        done: (s) => Boolean(s.branches["feature"]),
+      },
+      {
+        id: "commit-feature",
+        label: "Buat commit di `feature`",
+        done: (s) => {
+          const f = s.branches["feature"]
+          const m = s.branches["main"]
+          return Boolean(f && m && f !== m && isAncestor(s, m, f))
+        },
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "merge-feature",
+        label: "Merge `feature` ke `main` dengan `--no-ff`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const f = s.branches["feature"]
+          return Boolean(m && f && s.commits[m]?.parents.length === 2 && isAncestor(s, f, m))
+        },
+      },
+      {
+        id: "tag-v2",
+        label: "Buat tag `v2.0.0` pada commit merge",
+        done: (s) => {
+          const m = s.branches["main"]
+          return Boolean(s.tags["v2.0.0"]) && s.tags["v2.0.0"] === m && s.commits[m]?.parents.length === 2
+        },
+      },
+    ],
+    hints: [
+      "Buat `feature`, commit, lalu kembali ke `main`.",
+      "Merge dengan `--no-ff` agar terbentuk merge commit.",
+      "Tag merge commit dengan `git tag v2.0.0`.",
+    ],
+    answer: [
+      "git checkout -b feature",
+      'git commit -m "feature work"',
+      "git checkout main",
+      "git merge --no-ff feature",
+      "git tag v2.0.0",
+    ],
+    build: initialRepo,
+  },
+
+  {
+    id: "release-snapshot",
+    title: "Backport Main ke Branch Release",
+    difficulty: "Advanced",
+    instructions: [
+      "Buat tag `v1.0.0`, buat branch `release` dari tag itu, commit pekerjaan baru di `main`, lalu merge `main` ke `release`.",
+    ],
+    checklist: [
+      {
+        id: "tag-v1",
+        label: "Buat tag `v1.0.0` di `main`",
+        done: (s) => Boolean(s.tags["v1.0.0"]) && s.tags["v1.0.0"] === s.branches["main"],
+      },
+      {
+        id: "create-release",
+        label: "Buat branch `release` dari tag `v1.0.0`",
+        done: (s) => Boolean(s.branches["release"]) && s.branches["release"] === s.tags["v1.0.0"],
+      },
+      {
+        id: "main-commit",
+        label: "Buat commit baru di `main`",
+        done: (s) =>
+          Object.keys(s.commits).length >= 2 &&
+          s.branches["main"] !== s.tags["v1.0.0"],
+      },
+      {
+        id: "switch-release",
+        label: "Pindah ke branch `release`",
+        done: (s) => s.head.type === "branch" && s.head.name === "release",
+      },
+      {
+        id: "merge-main",
+        label: "Merge `main` ke `release` dengan `--no-ff`",
+        done: (s) => {
+          const r = s.branches["release"]
+          const m = s.branches["main"]
+          return Boolean(r && m && s.commits[r]?.parents.length === 2 && isAncestor(s, m, r))
+        },
+      },
+    ],
+    hints: [
+      "Tag HEAD dengan `git tag v1.0.0`.",
+      "Buat branch dari tag: `git branch release v1.0.0`.",
+      "Commit di `main`, pindah ke `release`, lalu `git merge --no-ff main`.",
+    ],
+    answer: [
+      "git tag v1.0.0",
+      "git branch release v1.0.0",
+      'git commit -m "main work"',
+      "git checkout release",
+      "git merge --no-ff main",
+    ],
+    build: initialRepo,
+  },
+  {
+    id: "hotfix-then-tag",
+    title: "Hotfix Lalu Tag Patch",
+    difficulty: "Advanced",
+    instructions: [
+      "Beri tag `v1.0.0`, commit pekerjaan baru di `main`, buat hotfix dari tag, merge hotfix, lalu tag hasilnya `v1.0.1`.",
+    ],
+    checklist: [
+      {
+        id: "tag-v1",
+        label: "Buat tag `v1.0.0` di `main`",
+        done: (s) => Boolean(s.tags["v1.0.0"]) && s.tags["v1.0.0"] === s.branches["main"],
+      },
+      {
+        id: "main-commit",
+        label: "Buat commit baru di `main`",
+        done: (s) =>
+          Object.keys(s.commits).length >= 2 &&
+          s.branches["main"] !== s.tags["v1.0.0"],
+      },
+      {
+        id: "create-hotfix",
+        label: "Buat branch `hotfix` dari tag `v1.0.0`",
+        done: (s) =>
+          Boolean(s.branches["hotfix"]) && s.branches["hotfix"] === s.tags["v1.0.0"],
+      },
+      {
+        id: "fix-commit",
+        label: "Buat commit perbaikan di `hotfix`",
+        done: (s) => {
+          const h = s.branches["hotfix"]
+          return Boolean(h && s.tags["v1.0.0"] && h !== s.tags["v1.0.0"] && isAncestor(s, s.tags["v1.0.0"], h))
+        },
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "merge-hotfix",
+        label: "Merge `hotfix` ke `main` dengan `--no-ff`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const h = s.branches["hotfix"]
+          return Boolean(m && h && s.commits[m]?.parents.length === 2 && isAncestor(s, h, m))
+        },
+      },
+      {
+        id: "tag-patch",
+        label: "Buat tag `v1.0.1` pada commit merge",
+        done: (s) => {
+          const m = s.branches["main"]
+          return Boolean(s.tags["v1.0.1"]) && s.tags["v1.0.1"] === m && s.commits[m]?.parents.length === 2
+        },
+      },
+    ],
+    hints: [
+      "Tag rilis dengan `git tag v1.0.0`, lalu commit pekerjaan baru.",
+      "Buat `hotfix` dari tag: `git checkout -b hotfix v1.0.0`.",
+      "Merge `--no-ff hotfix`, lalu `git tag v1.0.1`.",
+    ],
+    answer: [
+      "git tag v1.0.0",
+      'git commit -m "next release work"',
+      "git checkout -b hotfix v1.0.0",
+      'git commit -m "urgent fix"',
+      "git checkout main",
+      "git merge --no-ff hotfix",
+      "git tag v1.0.1",
+    ],
+    build: initialRepo,
+  },
+
 ]
 
 export const ROADMAP_ORDER = [
   "first-commit",
   "feature-merge",
+  "three-commits",
+  "switch-branches",
   "tag-release",
   "tag-old-commit",
   "release-merge",
   "reset-recovery",
   "merge-ff-only",
   "tag-survives-reset",
+  "merge-two-commits",
+  "branch-from-tag",
+  "release-to-main",
+  "tag-merge-result",
   "merge-undo",
   "two-branch-merge",
   "hotfix-from-tag",
+  "release-snapshot",
+  "hotfix-then-tag",
 ]
 
 export function getScenario(id: string): Scenario {
