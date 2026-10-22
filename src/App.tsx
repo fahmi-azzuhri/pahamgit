@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
 import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
@@ -42,6 +42,11 @@ export default function App() {
   const firstScenario = useRef(true)
 
   const [selected, setSelected] = useState<string | null>(null)
+
+  // ponytail: client-side gate only (no backend); swap for real auth when API exists
+  const [user, setUser] = useState<string | null>(() => localStorage.getItem("pahamgit:user"))
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [loginName, setLoginName] = useState("")
 
   // init terminal once
   useEffect(() => {
@@ -210,6 +215,25 @@ export default function App() {
     setSelected(null)
   }
 
+  const handleNext = () => {
+    if (!user) {
+      setLoginOpen(true)
+      return
+    }
+    next()
+  }
+
+  const handleLogin = (e: FormEvent) => {
+    e.preventDefault()
+    const name = loginName.trim()
+    if (!name) return
+    localStorage.setItem("pahamgit:user", name)
+    setUser(name)
+    setLoginOpen(false)
+    setLoginName("")
+    next()
+  }
+
   const branchLabel =
     state.head.type === "branch" ? state.head.name : `detached @ ${state.head.commit}`
 
@@ -298,10 +322,10 @@ export default function App() {
             </ul>
             {hasNext && progress.done === progress.total && (
               <button
-                onClick={next}
+                onClick={handleNext}
                 className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20"
               >
-                Lanjut ke task berikutnya →
+                {user ? "Lanjut ke task berikutnya →" : "Login & lanjut ke task berikutnya →"}
               </button>
             )}
             {!hasNext && progress.done === progress.total && (
@@ -318,6 +342,43 @@ export default function App() {
           <div ref={termRef} className="min-h-0 flex-1" />
         </div>
       </div>
+
+      {loginOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
+          <form
+            onSubmit={handleLogin}
+            className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-4 shadow-xl"
+          >
+            <h2 className="text-sm font-semibold text-slate-100">Masuk untuk lanjut</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+              Task pertama bisa dicoba tanpa login. Masuk dulu untuk membuka task kedua dan seterusnya.
+            </p>
+            <input
+              autoFocus
+              value={loginName}
+              onChange={(e) => setLoginName(e.target.value)}
+              placeholder="Nama kamu"
+              className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+            />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLoginOpen(false)}
+                className="flex-1 rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-400 hover:bg-[#1e293b]"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={!loginName.trim()}
+                className="flex-1 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Masuk
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
