@@ -100,13 +100,15 @@ export function complete(input: string, branchNames: string[]): string | null {
 
   // completing the subcommand of `git `
   if (tokens[0] === "git" && (tokens.length === 1 || (tokens.length === 2 && !startsNewWord))) {
-    const matches = GIT_SUBCOMMANDS.filter((s) => s.startsWith(last))
+    const partial = tokens.length === 1 ? "" : last
+    const matches = GIT_SUBCOMMANDS.filter((s) => s.startsWith(partial))
     if (matches.length === 1) return matches[0]
     return null
   }
   // completing branch names for branch/checkout/switch/merge
   if (tokens[0] === "git" && ["branch", "checkout", "switch", "merge"].includes(tokens[1] ?? "")) {
-    const matches = branchNames.filter((b) => b.startsWith(last))
+    const partial = startsNewWord ? "" : last
+    const matches = branchNames.filter((b) => b.startsWith(partial))
     if (matches.length === 1) return matches[0]
   }
   return null

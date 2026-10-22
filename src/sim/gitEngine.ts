@@ -8,10 +8,10 @@ import type {
 
 const AUTHOR = "you <you@pahamgit.dev>"
 
-let hashSeed = 0
 function randomHash(): CommitId {
-  const n = (Date.now() + hashSeed++) >>> 0
-  return n.toString(16).padStart(8, "0").slice(0, 7)
+  // full 28 bits of randomness: slicing Date.now() to 7 hex chars made ids collide
+  // for commits created within the same ~16ms window
+  return Math.random().toString(16).slice(2, 9).padEnd(7, "0")
 }
 
 export function headCommit(state: RepoState): CommitId | null {

@@ -1,11 +1,15 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
 import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
 import { FitAddon } from "@xterm/addon-fit"
 import { TopBar } from "./components/TopBar"
 import { GraphPanel } from "./components/GraphPanel"
+import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
+import { complete } from "./sim/parser"
+
+const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
 
 export default function App() {
   const {
@@ -28,122 +32,258 @@ export default function App() {
   const inputRef = useRef("")
   const runRef = useRef(run)
   runRef.current = run
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const historyRef = useRef<string[]>([])
+  const histIdxRef = useRef(0)
+
+  const [selected, setSelected] = useState<string | null>(null)
 
   // init terminal once
   useEffect(() => {
-    if (!termRef.current) return
+    const el = termRef.current
+    if (!el) return
     const x = new Terminal({
-      theme: { background: "#090d16", foreground: "#e2e8f0" },
+      theme: { background: "#0b1220", foreground: "#e2e8f0" },
       cursorBlink: true,
       fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace",
+      fontSize: 13,
+      scrollback: 1000,
     })
     const f = new FitAddon()
     x.loadAddon(f)
-    x.open(termRef.current)
+    x.open(el)
     f.fit()
     term.current = x
     fit.current = f
-    // welcome message
-    x.writeln("\x1b[33mWelcome to PahamGit simulator\x1b[0m")
-    x.write("$ ")
+
+    const prompt = () => x.write(PROMPT)
+    const rewrite = (value: string) => {
+      x.write(`\r\x1b[K${PROMPT}${value}`)
+      inputRef.current = value
+    }
+
+    x.writeln("\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah.")
+    x.writeln("Tab = autocomplete · ↑/↓ = riwayat · Ctrl+C = batal\n")
+    prompt()
+
     const handle = x.onData((data: string) => {
       if (data === "\r") {
         const cmd = inputRef.current.trim()
-        term.current?.writeln("")
-        const res = runRef.current(cmd)
-        if (res.output) term.current?.writeln(res.output)
-        term.current?.write("$ ")
+        x.writeln("")
+        if (cmd === "clear") {
+          x.clear()
+        } else if (cmd) {
+          const res = runRef.current(cmd)
+          if (res.output) x.writeln(res.output)
+          historyRef.current.push(cmd)
+        }
+        histIdxRef.current = historyRef.current.length
         inputRef.current = ""
-      } else if (data === "\u007F") {
-        // backspace
+        prompt()
+        return
+      }
+      if (data === "\t") {
+        const suggestion = complete(inputRef.current, Object.keys(stateRef.current.branches))
+        if (suggestion) {
+          const space = inputRef.current.lastIndexOf(" ")
+          const prefix = space >= 0 ? inputRef.current.slice(0, space + 1) : ""
+          rewrite(prefix + suggestion)
+        }
+        return
+      }
+      if (data === "\x1b[A") {
+        const h = historyRef.current
+        if (!h.length) return
+        histIdxRef.current = Math.max(0, histIdxRef.current - 1)
+        rewrite(h[histIdxRef.current])
+        return
+      }
+      if (data === "\x1b[B") {
+        const h = historyRef.current
+        if (!h.length) return
+        histIdxRef.current = Math.min(h.length, histIdxRef.current + 1)
+        rewrite(histIdxRef.current === h.length ? "" : h[histIdxRef.current])
+        return
+      }
+      if (data === "\u007F") {
         if (inputRef.current.length) {
           inputRef.current = inputRef.current.slice(0, -1)
-          term.current?.write("\b \b")
+          x.write("\b \b")
         }
-      } else if (data === "\u0003") {
-        // Ctrl+C
-        term.current?.writeln("^C")
-        term.current?.write("$ ")
+        return
+      }
+      if (data === "\u0003") {
+        x.writeln("^C")
         inputRef.current = ""
-      } else {
-        inputRef.current += data
-        term.current?.write(data)
+        prompt()
+        return
+      }
+      if (data === "\u000C") {
+        x.clear()
+        prompt()
+        return
+      }
+      inputRef.current += data
+      x.write(data)
+    })
+
+    const ro = new ResizeObserver(() => {
+      try {
+        f.fit()
+      } catch {
+        /* container hidden */
       }
     })
+    ro.observe(el)
+
     return () => {
+      ro.disconnect()
       handle.dispose()
       x.dispose()
     }
   }, [])
 
-  // resize on window change
+  // reset transient UI when scenario changes
   useEffect(() => {
-    const onResize = () => fit.current?.fit()
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [])
+    setSelected(null)
+  }, [scenarioId])
 
-  const handleCommitClick = (id: string) => {
-    const cmd = `git checkout ${id}`
-    term.current?.writeln(`\x1b[36m$ ${cmd}\x1b[0m`)
+  const execExternal = (cmd: string) => {
+    const t = term.current
+    if (!t) return
+    t.writeln(`${PROMPT}${cmd}`)
     const res = run(cmd)
-    if (res.output) term.current?.writeln(res.output)
-    term.current?.write("$ ")
+    if (res.output) t.writeln(res.output)
+    t.write(PROMPT)
+    inputRef.current = ""
   }
 
+  const handleCheckout = (id: string) => {
+    execExternal(`git checkout ${id}`)
+    setSelected(null)
+  }
+
+  const handleHint = () => {
+    const t = term.current
+    if (!t) return
+    // hints follow the checklist order: one hint per step
+    const step = Math.min(progress.done, scenario.hints.length - 1)
+    t.writeln(`\x1b[33mHint ${step + 1}/${scenario.hints.length}:\x1b[0m ${scenario.hints[step]}`)
+    t.write(PROMPT)
+  }
+
+  const handleShowAnswer = () => {
+    const t = term.current
+    if (!t) return
+    t.writeln("\x1b[33mSuggested solution:\x1b[0m")
+    for (const c of scenario.answer) t.writeln(`  \x1b[36m$ ${c}\x1b[0m`)
+    t.write(PROMPT)
+  }
+
+  const handleReset = () => {
+    reset()
+    setSelected(null)
+  }
+
+  const branchLabel =
+    state.head.type === "branch" ? state.head.name : `detached @ ${state.head.commit}`
+
   return (
-    <>
+    <div className="flex h-screen flex-col">
       <TopBar
         scenarioId={scenarioId}
         onScenarioChange={setScenarioId}
         done={progress.done}
         total={progress.total}
       />
-      <div className="flex h-[calc(100vh-56px)] overflow-hidden">
-        <div className="flex-1 overflow-auto border-r border-[#1e293b]">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative min-w-0 flex-1 border-r border-[#1e293b]">
           <ReactFlowProvider>
             <GraphPanel
               state={state}
               scenarioId={scenarioId}
-              onSelectCommit={handleCommitClick}
+              onSelectCommit={setSelected}
+              onHint={handleHint}
+              onShowAnswer={handleShowAnswer}
+              canUndo={canUndo}
+              onUndo={undo}
+              onReset={handleReset}
             />
           </ReactFlowProvider>
+          {selected && state.commits[selected] && (
+            <CommitDrawer
+              commit={state.commits[selected]}
+              state={state}
+              onClose={() => setSelected(null)}
+              onCheckout={handleCheckout}
+            />
+          )}
         </div>
-        <div className="flex w-96 flex-col bg-[#0b1220]">
-          <div className="flex items-center justify-between border-b border-[#1e293b] p-2 text-xs text-slate-400">
-            <span>Terminal</span>
-            <div className="flex gap-2">
-              <button
-                disabled={!canUndo}
-                onClick={undo}
-                className="rounded px-2 py-0.5 hover:bg-[#1e293b] disabled:opacity-50"
-              >
-                Undo
-              </button>
-              <button onClick={reset} className="rounded px-2 py-0.5 hover:bg-[#1e293b]">
-                Reset
-              </button>
+
+        <div className="flex w-[430px] flex-col bg-[#0b1220]">
+          <div className="border-b border-[#1e293b] p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="text-xs font-semibold tracking-wide text-slate-200">
+                TASK · LANGKAH {Math.min(progress.done + 1, progress.total)}/{progress.total}
+              </h3>
+              <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">
+                {scenario.difficulty}
+              </span>
             </div>
-          </div>
-          <div ref={termRef} className="flex-1 overflow-auto" />
-          <div className="border-t border-[#1e293b] p-2">
-            <h3 className="mb-1 text-xs font-medium text-slate-300">Task</h3>
-            <ul className="mb-2 list-inside list-disc space-y-0.5 text-xs text-slate-400">
+            <ul className="mb-3 space-y-1 text-xs leading-relaxed text-slate-400">
               {scenario.instructions.map((line, i) => (
                 <li key={i}>{line}</li>
               ))}
             </ul>
-            <h3 className="mb-1 text-xs font-medium text-slate-300">Checklist</h3>
-            <ul className="list-inside list-disc space-y-0.5 text-xs text-slate-200">
-              {checklist.map((c) => (
-                <li key={c.id} className={c.done ? "line-through text-slate-500" : ""}>
-                  {c.label}
-                </li>
-              ))}
+            <ul className="space-y-1 text-xs">
+              {checklist.map((c, i) => {
+                const active = checklist.findIndex((x) => !x.done)
+                const locked = !c.done && i > active
+                return (
+                  <li
+                    key={c.id}
+                    className={"flex items-start gap-2" + (locked ? " opacity-40" : "")}
+                    title={locked ? "Selesaikan langkah sebelumnya dulu" : undefined}
+                  >
+                    <span
+                      className={
+                        c.done
+                          ? "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-emerald-400 bg-emerald-400/15 text-[10px] text-emerald-300"
+                          : i === active
+                            ? "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-cyan-400 text-[10px] text-cyan-300"
+                            : "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-dashed border-[#334155] text-[10px] text-slate-500"
+                      }
+                    >
+                      {c.done ? "✓" : i + 1}
+                    </span>
+                    <span
+                      className={
+                        c.done
+                          ? "text-slate-500 line-through"
+                          : locked
+                            ? "text-slate-500"
+                            : "text-slate-200"
+                      }
+                    >
+                      {c.label}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           </div>
+
+          <div className="flex items-center justify-between border-b border-[#1e293b] px-3 py-1.5 text-[11px] text-slate-500">
+            <span>TERMINAL</span>
+            <span className="font-mono text-slate-400">
+              <span className="text-emerald-400">●</span> {branchLabel}
+            </span>
+          </div>
+          <div ref={termRef} className="min-h-0 flex-1" />
         </div>
       </div>
-    </>
+    </div>
   )
 }
+

@@ -94,3 +94,45 @@ export const SCENARIOS: Scenario[] = [
 export function getScenario(id: string): Scenario {
   return SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0]
 }
+
+export interface ChecklistState {
+  id: string
+  label: string
+  done: boolean
+}
+
+/**
+ * Steps are sequential: a step only counts when every earlier step is done,
+ * so later items cannot be pre-checked by unrelated state.
+ */
+export function advanceAchieved(
+  scenario: Scenario,
+  state: RepoState,
+  ids: Set<string>,
+): Set<string> {
+  const next = new Set(ids)
+  for (const item of scenario.checklist) {
+    if (!item.done(state) && !next.has(item.id)) break
+    next.add(item.id)
+  }
+  return next
+}
+
+/** Checklist with the sequential rule applied on top of the sticky achievements. */
+export function orderedChecklist(
+  scenario: Scenario,
+  state: RepoState,
+  achieved: Set<string>,
+): ChecklistState[] {
+  const out: ChecklistState[] = []
+  for (let i = 0; i < scenario.checklist.length; i++) {
+    const item = scenario.checklist[i]
+    const prevDone = i === 0 || out[i - 1].done
+    out.push({
+      id: item.id,
+      label: item.label,
+      done: (item.done(state) || achieved.has(item.id)) && prevDone,
+    })
+  }
+  return out
+}
