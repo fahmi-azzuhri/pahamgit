@@ -628,6 +628,164 @@ export const SCENARIOS: Scenario[] = [
     build: initialRepo,
   },
 
+  {
+    id: "three-commits",
+    title: "Tiga Commit Berurutan",
+    difficulty: "Beginner",
+    instructions: [
+      "Buat tiga commit berurutan dengan pesan `commit 1`, `commit 2`, dan `commit 3`.",
+    ],
+    checklist: [
+      {
+        id: "first",
+        label: "Buat commit pertama",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+      {
+        id: "second",
+        label: "Buat commit kedua",
+        done: (s) => Object.keys(s.commits).length >= 3,
+      },
+      {
+        id: "third",
+        label: "Buat commit ketiga",
+        done: (s) => Object.keys(s.commits).length >= 4,
+      },
+    ],
+    hints: [
+      "Jalankan `git commit -m \"commit 1\"`, lalu ulangi untuk `commit 2` dan `commit 3`.",
+    ],
+    answer: [
+      'git commit -m "commit 1"',
+      'git commit -m "commit 2"',
+      'git commit -m "commit 3"',
+    ],
+    build: initialRepo,
+  },
+  {
+    id: "switch-branches",
+    title: "Berpindah Branch",
+    difficulty: "Beginner",
+    instructions: [
+      "Buat branch `dev`, pindah ke `dev`, lalu kembali ke `main`.",
+    ],
+    checklist: [
+      {
+        id: "create-dev",
+        label: "Buat branch `dev`",
+        done: (s) => Boolean(s.branches["dev"]),
+      },
+      {
+        id: "on-dev",
+        label: "Pindah ke branch `dev`",
+        done: (s) => s.head.type === "branch" && s.head.name === "dev",
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+    ],
+    hints: [
+      "Buat branch dengan `git branch dev`.",
+      "Pindah dengan `git checkout dev`, lalu kembali dengan `git checkout main`.",
+    ],
+    answer: ["git branch dev", "git checkout dev", "git checkout main"],
+    build: initialRepo,
+  },
+  {
+    id: "merge-two-commits",
+    title: "Merge Branch dengan Dua Commit",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat branch `feature`, tambahkan dua commit, kembali ke `main`, lalu merge dengan `--no-ff`.",
+    ],
+    checklist: [
+      {
+        id: "create-feature",
+        label: "Buat branch `feature`",
+        done: (s) => Boolean(s.branches["feature"]),
+      },
+      {
+        id: "commit-one",
+        label: "Buat commit pertama di `feature`",
+        done: (s) => {
+          const f = s.branches["feature"]
+          const m = s.branches["main"]
+          return Object.keys(s.commits).length >= 2 && Boolean(f && m && f !== m && isAncestor(s, m, f))
+        },
+      },
+      {
+        id: "commit-two",
+        label: "Buat commit kedua di `feature`",
+        done: (s) => Object.keys(s.commits).length >= 3,
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "merge-feature",
+        label: "Merge `feature` ke `main` dengan `--no-ff`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const f = s.branches["feature"]
+          return Boolean(m && f && s.commits[m]?.parents.length === 2 && isAncestor(s, f, m))
+        },
+      },
+    ],
+    hints: [
+      "Buat branch dengan `git checkout -b feature`.",
+      "Buat dua commit, lalu kembali ke `main`.",
+      "Merge dengan `git merge --no-ff feature`.",
+    ],
+    answer: [
+      "git checkout -b feature",
+      'git commit -m "first feature change"',
+      'git commit -m "second feature change"',
+      "git checkout main",
+      "git merge --no-ff feature",
+    ],
+    build: initialRepo,
+  },
+  {
+    id: "branch-from-tag",
+    title: "Buat Branch dari Tag",
+    difficulty: "Intermediate",
+    instructions: [
+      "Beri tag `v1.0.0` di commit awal, buat commit baru, lalu buat branch `legacy` dari tag tersebut.",
+    ],
+    checklist: [
+      {
+        id: "tag-v1",
+        label: "Buat tag `v1.0.0` di `main`",
+        done: (s) => Boolean(s.tags["v1.0.0"]) && s.tags["v1.0.0"] === s.branches["main"],
+      },
+      {
+        id: "new-commit",
+        label: "Buat commit baru di `main`",
+        done: (s) =>
+          Object.keys(s.commits).length >= 2 && s.branches["main"] !== s.tags["v1.0.0"],
+      },
+      {
+        id: "branch-legacy",
+        label: "Buat branch `legacy` dari tag `v1.0.0`",
+        done: (s) => Boolean(s.branches["legacy"]) && s.branches["legacy"] === s.tags["v1.0.0"],
+      },
+    ],
+    hints: [
+      "Tag HEAD dengan `git tag v1.0.0` sebelum commit baru.",
+      "Buat branch dari tag: `git branch legacy v1.0.0`.",
+    ],
+    answer: [
+      "git tag v1.0.0",
+      'git commit -m "new work"',
+      "git branch legacy v1.0.0",
+    ],
+    build: initialRepo,
+  },
+
 ]
 
 export const ROADMAP_ORDER = [
