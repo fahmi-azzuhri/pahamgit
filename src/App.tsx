@@ -217,6 +217,7 @@ export default function App() {
     <div className="flex h-screen flex-col">
       <TopBar
         scenarioId={scenarioId}
+        title={scenario.title}
         done={progress.done}
         total={progress.total}
       />
