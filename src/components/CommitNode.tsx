@@ -5,8 +5,8 @@ import type { CommitNodeData } from "../lib/graph"
 function CommitNodeBase({ data }: { data: CommitNodeData }) {
   const { commit, color, refs, isHead } = data
   return (
-    <div className="commit-node" style={{ ["--c" as string]: color }}>
-      <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+    <div className={`commit-node${isHead ? " head" : ""}`} style={{ ["--c" as string]: color }}>
+      <Handle type="target" position={Position.Left} style={{ opacity: 0, top: 17 }} />
       {refs.length > 0 && (
         <div className="commit-chips">
           {refs.map((r, i) => (
@@ -20,10 +20,12 @@ function CommitNodeBase({ data }: { data: CommitNodeData }) {
           ))}
         </div>
       )}
-      <div className={isHead ? "ring head" : "ring"} />
+      <div className="ring" />
       <span className="hash">{commit.id}</span>
-      <span className="msg">{commit.message}</span>
-      <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+      <span className="msg" title={commit.message}>
+        {commit.message}
+      </span>
+      <Handle type="source" position={Position.Right} style={{ opacity: 0, top: 17 }} />
     </div>
   )
 }

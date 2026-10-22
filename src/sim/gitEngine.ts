@@ -347,7 +347,5 @@ export function initialRepo(): RepoState {
   state.branchLanes["main"] = 0
   const c1 = makeCommit(state, "Initial commit", [], 0)
   state.branches["main"] = c1.id
-  const c2 = makeCommit(state, "Add README", [c1.id], 0)
-  state.branches["main"] = c2.id
   return state
 }
