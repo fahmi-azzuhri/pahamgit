@@ -8,6 +8,7 @@ import { GraphPanel } from "./components/GraphPanel"
 import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
+import { login, me, register } from "./lib/auth"
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
 const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
@@ -43,10 +44,41 @@ export default function App() {
 
   const [selected, setSelected] = useState<string | null>(null)
 
-  // ponytail: client-side gate only (no backend); swap for real auth when API exists
-  const [user, setUser] = useState<string | null>(() => localStorage.getItem("pahamgit:user"))
+  // ponytail: client-side gate backed by real API sessions; progress itself stays local
+  const [authed, setAuthed] = useState(false)
+  const [sessionChecking, setSessionChecking] = useState(() => Boolean(localStorage.getItem("pahamgit:token")))
   const [loginOpen, setLoginOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<"login" | "register">("login")
   const [loginName, setLoginName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [authError, setAuthError] = useState("")
+  const [authBusy, setAuthBusy] = useState(false)
+
+  // drop stale sessions on load instead of trusting localStorage blindly
+  useEffect(() => {
+    const stored = localStorage.getItem("pahamgit:token")
+    if (!stored) return
+    let active = true
+    me(stored)
+      .then((u) => {
+        if (!active) return
+        setAuthed(true)
+        localStorage.setItem("pahamgit:name", u.name)
+      })
+      .catch(() => {
+        if (!active) return
+        localStorage.removeItem("pahamgit:token")
+        localStorage.removeItem("pahamgit:name")
+        setAuthed(false)
+      })
+      .finally(() => {
+        if (active) setSessionChecking(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   // init terminal once
   useEffect(() => {
@@ -216,22 +248,38 @@ export default function App() {
   }
 
   const handleNext = () => {
-    if (!user) {
+    if (sessionChecking) return
+    if (!authed) {
+      setAuthMode("login")
+      setAuthError("")
       setLoginOpen(true)
       return
     }
     next()
   }
 
-  const handleLogin = (e: FormEvent) => {
+  const handleAuth = async (e: FormEvent) => {
     e.preventDefault()
-    const name = loginName.trim()
-    if (!name) return
-    localStorage.setItem("pahamgit:user", name)
-    setUser(name)
-    setLoginOpen(false)
-    setLoginName("")
-    next()
+    setAuthBusy(true)
+    setAuthError("")
+    try {
+      const res =
+        authMode === "register"
+          ? await register(loginName.trim(), email.trim(), password)
+          : await login(email.trim(), password)
+      localStorage.setItem("pahamgit:token", res.token)
+      localStorage.setItem("pahamgit:name", res.user.name)
+      setAuthed(true)
+      setSessionChecking(false)
+      setLoginOpen(false)
+      setLoginName("")
+      setPassword("")
+      next()
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : "Gagal masuk")
+    } finally {
+      setAuthBusy(false)
+    }
   }
 
   const branchLabel =
@@ -323,9 +371,14 @@ export default function App() {
             {hasNext && progress.done === progress.total && (
               <button
                 onClick={handleNext}
-                className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20"
+                disabled={sessionChecking}
+                className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {user ? "Lanjut ke task berikutnya →" : "Login & lanjut ke task berikutnya →"}
+                {sessionChecking
+                  ? "Memeriksa sesi..."
+                  : authed
+                    ? "Lanjut ke task berikutnya →"
+                    : "Login & lanjut ke task berikutnya →"}
               </button>
             )}
             {!hasNext && progress.done === progress.total && (
@@ -346,36 +399,84 @@ export default function App() {
       {loginOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
           <form
-            onSubmit={handleLogin}
+            onSubmit={handleAuth}
             className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-4 shadow-xl"
           >
-            <h2 className="text-sm font-semibold text-slate-100">Masuk untuk lanjut</h2>
+            <h2 className="text-sm font-semibold text-slate-100">
+              {authMode === "login" ? "Masuk untuk lanjut" : "Daftar untuk lanjut"}
+            </h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              Task pertama bisa dicoba tanpa login. Masuk dulu untuk membuka task kedua dan seterusnya.
+              Task pertama bisa dicoba tanpa login. {authMode === "login" ? "Masuk" : "Daftar"} dulu untuk membuka task kedua
+              dan seterusnya.
             </p>
+            {authMode === "register" && (
+              <input
+                autoFocus
+                value={loginName}
+                onChange={(e) => setLoginName(e.target.value)}
+                placeholder="Nama kamu"
+                autoComplete="name"
+                className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              />
+            )}
             <input
-              autoFocus
-              value={loginName}
-              onChange={(e) => setLoginName(e.target.value)}
-              placeholder="Nama kamu"
-              className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              autoFocus={authMode === "login"}
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
             />
+            <input
+              type="password"
+              required
+              minLength={authMode === "register" ? 8 : undefined}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={authMode === "register" ? "Password (min. 8 karakter)" : "Password"}
+              autoComplete={authMode === "register" ? "new-password" : "current-password"}
+              className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+            />
+            {authError && <p className="mt-2 text-xs text-rose-400">{authError}</p>}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={() => setLoginOpen(false)}
-                className="flex-1 rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-400 hover:bg-[#1e293b]"
+                disabled={authBusy}
+                onClick={() => {
+                  setLoginOpen(false)
+                  setPassword("")
+                  setAuthError("")
+                }}
+                className="flex-1 rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-400 hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                disabled={!loginName.trim()}
+                disabled={
+                  authBusy ||
+                  !email.trim() ||
+                  !password ||
+                  (authMode === "register" && loginName.trim().length < 2)
+                }
                 className="flex-1 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Masuk
+                {authBusy ? "Memproses..." : authMode === "login" ? "Masuk" : "Daftar"}
               </button>
             </div>
+            <button
+              type="button"
+              disabled={authBusy}
+              onClick={() => {
+                setAuthMode(authMode === "login" ? "register" : "login")
+                setAuthError("")
+              }}
+              className="mt-3 w-full text-center text-[11px] text-slate-400 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {authMode === "login" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
+            </button>
           </form>
         </div>
       )}
