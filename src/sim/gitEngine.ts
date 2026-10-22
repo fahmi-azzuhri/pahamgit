@@ -320,17 +320,17 @@ export function refsFor(
 
 function helpLines(): string {
   return `Supported commands:
-  git status                      show repo state
-  git log [--oneline]            show commit history
-  git branch [name] [start]       list / create branches
-  git checkout [-b] <branch|id>  switch or create+switch
-  git switch [-c] <branch>        switch or create+switch
-  git commit -m "msg"             record a new commit
-  git merge <branch> [--no-ff]   merge a branch
-  git reset [--hard] [id]         move current branch back
-  git tag <name> [id]             create a tag
-  clear                           clear the terminal
-  help                            show this help`
+  git status                  repo state
+  git log [--oneline]         commit history
+  git branch <name> [start]   list / create branch
+  git checkout [-b] <ref>     switch / create
+  git switch [-c] <branch>    switch / create
+  git commit -m "msg"         record a commit
+  git merge <branch>          merge (--no-ff optional)
+  git reset [--hard] [id]     move branch back
+  git tag <name> [id]         create a tag
+  clear                       clear the terminal
+  help                        show this help`
 }
 
 export function initialRepo(): RepoState {

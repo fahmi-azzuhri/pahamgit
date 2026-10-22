@@ -224,5 +224,6 @@ body {
   background: transparent !important;
 }
 .xterm .xterm-rows {
-  font-family: var(--mono) !important;
+  /* keep xterm's measured font: a different stack makes glyphs wider than the cell grid */
+  font-family: inherit; /* matched to xtermFont, not body --mono */
 }
