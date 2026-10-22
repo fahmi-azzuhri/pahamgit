@@ -71,5 +71,11 @@ for (const sc of SCENARIOS) {
 // roadmap order must be unique and refer to existing journeys
 assert.equal(new Set(ROADMAP_ORDER).size, ROADMAP_ORDER.length)
 assert.deepEqual(ROADMAP_ORDER.map(getScenario).map((s: Scenario) => s.id), ROADMAP_ORDER)
+// no journey may be omitted from (or duplicated in) the roadmap
+assert.deepEqual(
+  SCENARIOS.map((s) => s.id).sort(),
+  [...ROADMAP_ORDER].sort(),
+  "SCENARIOS and ROADMAP_ORDER must cover the same journeys",
+)
 
 console.log("checklist sequential + sticky: OK")

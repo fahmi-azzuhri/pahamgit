@@ -641,6 +641,7 @@ export const ROADMAP_ORDER = [
   "tag-survives-reset",
   "merge-undo",
   "two-branch-merge",
+  "hotfix-from-tag",
 ]
 
 export function getScenario(id: string): Scenario {
