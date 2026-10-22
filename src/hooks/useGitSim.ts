@@ -3,6 +3,7 @@ import { applyCommand } from "../sim/gitEngine"
 import { parseCommand } from "../sim/parser"
 import {
   advanceAchieved,
+  blockedStep,
   getScenario,
   orderedChecklist,
   type ChecklistState,
@@ -31,19 +32,6 @@ export function useGitSim() {
     setHistory([])
     setAchieved({ scenarioId: scenario.id, ids: new Set() })
   }, [scenario])
-
-  const run = useCallback(
-    (raw: string): CommandResult => {
-      const parsed = parseCommand(raw)
-      const res = applyCommand(state, parsed)
-      if (res.changed) {
-        setHistory((h) => [...h, state])
-        setState(res.state)
-      }
-      return res
-    },
-    [state],
-  )
 
   const undo = useCallback(() => {
     setHistory((h) => {
@@ -77,6 +65,33 @@ export function useGitSim() {
     const kept = achieved.scenarioId === scenario.id ? achieved.ids : new Set<string>()
     return orderedChecklist(scenario, state, kept)
   }, [scenario, state, achieved])
+
+  const run = useCallback(
+    (raw: string): CommandResult => {
+      const trimmed = raw.trim()
+      const parsed = parseCommand(trimmed)
+      const res = applyCommand(state, parsed)
+      // hard-block: a mutating command must advance the active checklist step
+      if (res.changed) {
+        const kept = achieved.scenarioId === scenario.id ? achieved.ids : new Set<string>()
+        const blocked = blockedStep(scenario, state, res.state, kept)
+        if (blocked !== null) {
+          return {
+            state,
+            output: `error: "${trimmed}" does not complete the current step: ${scenario.checklist[blocked].label.replace(/`/g, "")}`,
+            ok: false,
+            changed: false,
+          }
+        }
+      }
+      if (res.changed) {
+        setHistory((h) => [...h, state])
+        setState(res.state)
+      }
+      return res
+    },
+    [state, scenario, achieved],
+  )
 
   const progress = useMemo(() => {
     const done = checklist.filter((c) => c.done).length

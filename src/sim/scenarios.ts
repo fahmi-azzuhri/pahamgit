@@ -136,3 +136,19 @@ export function orderedChecklist(
   }
   return out
 }
+
+/**
+ * Index of the active step that `next` fails to advance, or null when the
+ * command moves the active step forward (or no step is active).
+ */
+export function blockedStep(
+  scenario: Scenario,
+  prev: RepoState,
+  next: RepoState,
+  achieved: Set<string> = new Set(),
+): number | null {
+  const before = orderedChecklist(scenario, prev, achieved)
+  const active = before.findIndex((c) => !c.done)
+  if (active < 0) return null
+  return orderedChecklist(scenario, next, achieved)[active].done ? null : active
+}
