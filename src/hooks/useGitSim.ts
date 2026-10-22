@@ -6,6 +6,7 @@ import {
   blockedStep,
   getScenario,
   orderedChecklist,
+  ROADMAP_ORDER,
   type ChecklistState,
   type Scenario,
 } from "../sim/scenarios"
@@ -14,7 +15,8 @@ import type { CommandResult, RepoState } from "../sim/types"
 export type { ChecklistState }
 
 export function useGitSim() {
-  const [scenarioId, setScenarioId] = useState<string>(() => "feature-merge")
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const scenarioId = ROADMAP_ORDER[currentIndex]
   const scenario: Scenario = useMemo(() => getScenario(scenarioId), [scenarioId])
   const [state, setState] = useState<RepoState>(() => scenario.build())
   const [history, setHistory] = useState<RepoState[]>([])
@@ -98,10 +100,14 @@ export function useGitSim() {
     return { done, total: checklist.length }
   }, [checklist])
 
+  const hasNext = currentIndex < ROADMAP_ORDER.length - 1
+  const next = useCallback(() => {
+    setCurrentIndex((i) => Math.min(i + 1, ROADMAP_ORDER.length - 1))
+  }, [])
+
   return {
     scenario,
     scenarioId,
-    setScenarioId,
     state,
     run,
     undo,
@@ -109,5 +115,7 @@ export function useGitSim() {
     canUndo: history.length > 0,
     checklist,
     progress,
+    hasNext,
+    next,
   }
 }

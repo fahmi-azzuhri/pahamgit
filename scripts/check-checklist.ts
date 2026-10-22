@@ -2,6 +2,8 @@ import assert from "node:assert/strict"
 import { applyCommand } from "../src/sim/gitEngine"
 import { parseCommand } from "../src/sim/parser"
 import {
+  ROADMAP_ORDER,
+  SCENARIOS,
   advanceAchieved,
   blockedStep,
   getScenario,
@@ -52,14 +54,22 @@ assert.equal(blockedStep(scenario, feature, runOne(feature, 'git commit -m "x"')
 // read-only commands never mutate, so the hook lets them through
 assert.equal(applyCommand(feature, parseCommand("git status")).changed, false)
 
-// every command in the suggested answer must clear the gate (sticky steps)
-let walk = start
-let sticky = new Set<string>()
-for (const cmd of scenario.answer) {
-  const next = runOne(walk, cmd)
-  assert.equal(blockedStep(scenario, walk, next, sticky), null, cmd)
-  walk = next
-  sticky = advanceAchieved(scenario, walk, sticky)
+// every scenario answer must clear the gate and finish all steps
+for (const sc of SCENARIOS) {
+  let walk = sc.build()
+  let sticky = new Set<string>()
+  for (const cmd of sc.answer) {
+    const next = runOne(walk, cmd)
+    assert.equal(blockedStep(sc, walk, next, sticky), null, `${sc.id}: ${cmd}`)
+    walk = next
+    sticky = advanceAchieved(sc, walk, sticky)
+  }
+  const done = orderedChecklist(sc, walk, sticky).filter((c) => c.done).length
+  assert.equal(done, sc.checklist.length, `${sc.id}: ${done}/${sc.checklist.length}`)
 }
+
+// roadmap order must be unique and refer to existing journeys
+assert.equal(new Set(ROADMAP_ORDER).size, ROADMAP_ORDER.length)
+assert.deepEqual(ROADMAP_ORDER.map(getScenario).map((s: Scenario) => s.id), ROADMAP_ORDER)
 
 console.log("checklist sequential + sticky: OK")

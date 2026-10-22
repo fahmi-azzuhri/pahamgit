@@ -1,13 +1,13 @@
-import { SCENARIOS } from "../sim/scenarios"
+import { ROADMAP_ORDER, SCENARIOS } from "../sim/scenarios"
 
 interface TopBarProps {
   scenarioId: string
-  onScenarioChange: (id: string) => void
   done: number
   total: number
 }
 
-export function TopBar({ scenarioId, onScenarioChange, done, total }: TopBarProps) {
+export function TopBar({ scenarioId, done, total }: TopBarProps) {
+  const journey = ROADMAP_ORDER.indexOf(scenarioId) + 1
   const pct = total ? Math.round((done / total) * 100) : 0
   return (
     <header className="flex items-center gap-4 border-b border-[#1e293b] bg-[#0b1220] px-4 py-2.5">
@@ -25,20 +25,36 @@ export function TopBar({ scenarioId, onScenarioChange, done, total }: TopBarProp
 
       <div className="mx-2 h-5 w-px bg-[#1e293b]" />
 
-      <label className="flex items-center gap-2 text-xs text-slate-400">
-        <span>Scenario</span>
-        <select
-          value={scenarioId}
-          onChange={(e) => onScenarioChange(e.target.value)}
-          className="rounded-md border border-[#243044] bg-[#0f172a] px-2 py-1 text-xs text-slate-100 outline-none focus:border-cyan-400"
-        >
-          {SCENARIOS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.title} · {s.difficulty}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="flex items-center gap-2 overflow-x-auto">
+        <span className="shrink-0 text-xs text-slate-400">
+          Roadmap <span className="font-mono text-slate-200">{journey}/{ROADMAP_ORDER.length}</span>
+        </span>
+        <ol className="flex items-center gap-1">
+          {ROADMAP_ORDER.map((id, i) => {
+            const s = SCENARIOS.find((x) => x.id === id)
+            if (!s) return null
+            const done = i < journey - 1
+            const active = i === journey - 1
+            return (
+              <li
+                key={s.id}
+                title={s.title}
+                className={
+                  "hidden shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] lg:flex " +
+                  (active
+                    ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-200"
+                    : done
+                      ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                      : "border-[#243044] text-slate-500")
+                }
+              >
+                <span className="font-mono">{done ? "✓" : i + 1}</span>
+                <span className="max-w-24 truncate">{s.title}</span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
 
       <div className="ml-auto flex items-center gap-3">
         <div className="flex items-center gap-2 text-xs text-slate-400">

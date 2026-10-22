@@ -10,12 +10,13 @@ import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
+const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
+const CONTROLS = "Tab = autocomplete · ↑/↓ = riwayat · Ctrl+C = batal"
 
 export default function App() {
   const {
     scenario,
     scenarioId,
-    setScenarioId,
     state,
     run,
     undo,
@@ -23,6 +24,8 @@ export default function App() {
     canUndo,
     checklist,
     progress,
+    hasNext,
+    next,
   } = useGitSim()
 
   const termRef = useRef<HTMLDivElement>(null)
@@ -36,6 +39,7 @@ export default function App() {
   stateRef.current = state
   const historyRef = useRef<string[]>([])
   const histIdxRef = useRef(0)
+  const firstScenario = useRef(true)
 
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -65,8 +69,8 @@ export default function App() {
       inputRef.current = value
     }
 
-    x.writeln("\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah.")
-    x.writeln("Tab = autocomplete · ↑/↓ = riwayat · Ctrl+C = batal\n")
+    x.writeln(INTRO)
+    x.writeln(CONTROLS + "\n")
     prompt()
 
     const handle = x.onData((data: string) => {
@@ -146,6 +150,24 @@ export default function App() {
     }
   }, [])
 
+  // on scenario (roadmap) change, print intro without clearing previous output
+  useEffect(() => {
+    if (firstScenario.current) {
+      firstScenario.current = false
+      return
+    }
+    const t = term.current
+    if (!t) return
+    // clear old session, keep the intro visible after reset
+    t.clear()
+    t.writeln(INTRO)
+    t.writeln(CONTROLS + "\n")
+    t.write(PROMPT)
+    inputRef.current = ""
+    historyRef.current = []
+    histIdxRef.current = 0
+  }, [scenarioId])
+
   // reset transient UI when scenario changes
   useEffect(() => {
     setSelected(null)
@@ -195,7 +217,6 @@ export default function App() {
     <div className="flex h-screen flex-col">
       <TopBar
         scenarioId={scenarioId}
-        onScenarioChange={setScenarioId}
         done={progress.done}
         total={progress.total}
       />
@@ -274,6 +295,17 @@ export default function App() {
                 )
               })}
             </ul>
+            {hasNext && progress.done === progress.total && (
+              <button
+                onClick={next}
+                className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20"
+              >
+                Lanjut ke task berikutnya →
+              </button>
+            )}
+            {!hasNext && progress.done === progress.total && (
+              <p className="mt-3 text-xs text-emerald-300">✓ Roadmap selesai</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between border-b border-[#1e293b] px-3 py-1.5 text-[11px] text-slate-500">
