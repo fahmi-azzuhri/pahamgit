@@ -9,9 +9,10 @@ interface TopBarProps {
   username: string
   onAuthClick: () => void
   onLogout: () => void
+  onProfileClick: () => void
 }
 
-export function TopBar({ scenarioId, title, done, total, authed, username, onAuthClick, onLogout }: TopBarProps) {
+export function TopBar({ scenarioId, title, done, total, authed, username, onAuthClick, onLogout, onProfileClick }: TopBarProps) {
   const journey = ROADMAP_ORDER.indexOf(scenarioId) + 1
   const pct = total ? Math.round((done / total) * 100) : 0
   return (
@@ -54,6 +55,17 @@ export function TopBar({ scenarioId, title, done, total, authed, username, onAut
         {authed ? (
           <>
             <span className="hidden font-mono text-cyan-300 sm:inline">{username}</span>
+            <button
+              onClick={onProfileClick}
+              aria-label="Profile"
+              title="Profile"
+              className="flex h-6 w-6 items-center justify-center rounded-md text-slate-300 hover:bg-[#1e293b] hover:text-cyan-300"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5" />
+              </svg>
+            </button>
             <button
               onClick={onLogout}
               className="rounded-md border border-[#334155] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-[#1e293b]"

@@ -49,6 +49,7 @@ export default function App() {
   const [account, setAccount] = useState(() => localStorage.getItem("pahamgit:username") ?? "")
   const [sessionChecking, setSessionChecking] = useState(() => Boolean(localStorage.getItem("pahamgit:token")))
   const [loginOpen, setLoginOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
   const [username, setUsername] = useState("")
   const [identifier, setIdentifier] = useState("")
@@ -312,6 +313,7 @@ export default function App() {
         username={account}
         onAuthClick={() => setLoginOpen(true)}
         onLogout={handleLogout}
+        onProfileClick={() => setProfileOpen(true)}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative min-w-0 flex-1 border-r border-[#1e293b]">
@@ -449,16 +451,18 @@ export default function App() {
                 className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
               />
             )}
-            <input
-              autoFocus={authMode === "login"}
-              type="text"
-              required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="Email atau username"
-              autoComplete="username"
-              className={authMode === "login" ? "mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400" : "hidden"}
-            />
+            {authMode === "login" && (
+              <input
+                autoFocus
+                type="text"
+                required
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Email atau username"
+                autoComplete="username"
+                className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              />
+            )}
             <input
               type="password"
               required
@@ -508,6 +512,37 @@ export default function App() {
               {authMode === "login" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
             </button>
           </form>
+        </div>
+      )}
+      {profileOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+          onClick={() => setProfileOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-4 shadow-xl"
+          >
+            <h2 className="text-sm font-semibold text-slate-100">Profile</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">Data akun kamu.</p>
+            <dl className="mt-3 space-y-2 font-mono text-xs">
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">username</dt>
+                <dd className="truncate text-cyan-300">{account}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">progres</dt>
+                <dd className="text-slate-300">{progress.done}/{progress.total} task</dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setProfileOpen(false)}
+              className="mt-4 w-full rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-300 hover:bg-[#1e293b]"
+            >
+              Tutup
+            </button>
+          </div>
         </div>
       )}
     </div>
