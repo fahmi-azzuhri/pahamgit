@@ -48,3 +48,15 @@ export async function me(token: string): Promise<AuthUser> {
   if (!res.ok) throw new Error("Sesi tidak valid")
   return (await res.json()) as AuthUser
 }
+
+export async function logout(token: string) {
+  // stateless JWT: server holds nothing to delete, failure is fine
+  try {
+    await fetch(`${API_URL}/api/auth/logout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    /* offline logout still works locally */
+  }
+}

@@ -8,7 +8,7 @@ import { GraphPanel } from "./components/GraphPanel"
 import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
-import { login, me, register } from "./lib/auth"
+import { login, logout, me, register } from "./lib/auth"
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
 const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
@@ -46,6 +46,7 @@ export default function App() {
 
   // ponytail: client-side gate backed by real API sessions; progress itself stays local
   const [authed, setAuthed] = useState(false)
+  const [account, setAccount] = useState(() => localStorage.getItem("pahamgit:username") ?? "")
   const [sessionChecking, setSessionChecking] = useState(() => Boolean(localStorage.getItem("pahamgit:token")))
   const [loginOpen, setLoginOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
@@ -65,6 +66,7 @@ export default function App() {
       .then((u) => {
         if (!active) return
         setAuthed(true)
+        setAccount(u.username)
         localStorage.setItem("pahamgit:username", u.username)
       })
       .catch(() => {
@@ -72,6 +74,7 @@ export default function App() {
         localStorage.removeItem("pahamgit:token")
         localStorage.removeItem("pahamgit:username")
         setAuthed(false)
+        setAccount("")
       })
       .finally(() => {
         if (active) setSessionChecking(false)
@@ -270,6 +273,7 @@ export default function App() {
           : await login(identifier.trim(), password)
       localStorage.setItem("pahamgit:token", res.token)
       localStorage.setItem("pahamgit:username", res.user.username)
+      setAccount(res.user.username)
       setAuthed(true)
       setSessionChecking(false)
       setLoginOpen(false)
@@ -285,6 +289,15 @@ export default function App() {
     }
   }
 
+  const handleLogout = () => {
+    const stored = localStorage.getItem("pahamgit:token")
+    localStorage.removeItem("pahamgit:token")
+    localStorage.removeItem("pahamgit:username")
+    setAuthed(false)
+    setAccount("")
+    if (stored) void logout(stored)
+  }
+
   const branchLabel =
     state.head.type === "branch" ? state.head.name : `detached @ ${state.head.commit}`
 
@@ -295,6 +308,10 @@ export default function App() {
         title={scenario.title}
         done={progress.done}
         total={progress.total}
+        authed={authed}
+        username={account}
+        onAuthClick={() => setLoginOpen(true)}
+        onLogout={handleLogout}
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative min-w-0 flex-1 border-r border-[#1e293b]">

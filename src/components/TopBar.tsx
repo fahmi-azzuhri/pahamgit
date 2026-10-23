@@ -5,9 +5,13 @@ interface TopBarProps {
   title: string
   done: number
   total: number
+  authed: boolean
+  username: string
+  onAuthClick: () => void
+  onLogout: () => void
 }
 
-export function TopBar({ scenarioId, title, done, total }: TopBarProps) {
+export function TopBar({ scenarioId, title, done, total, authed, username, onAuthClick, onLogout }: TopBarProps) {
   const journey = ROADMAP_ORDER.indexOf(scenarioId) + 1
   const pct = total ? Math.round((done / total) * 100) : 0
   return (
@@ -47,6 +51,24 @@ export function TopBar({ scenarioId, title, done, total }: TopBarProps) {
         <span className="font-mono text-slate-300">
           {done}/{total}
         </span>
+        {authed ? (
+          <>
+            <span className="hidden font-mono text-cyan-300 sm:inline">{username}</span>
+            <button
+              onClick={onLogout}
+              className="rounded-md border border-[#334155] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-[#1e293b]"
+            >
+              Keluar
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={onAuthClick}
+            className="rounded-md border border-cyan-400/40 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-medium text-cyan-300 hover:bg-cyan-400/20"
+          >
+            Login
+          </button>
+        )}
       </div>
     </header>
   )
