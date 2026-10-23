@@ -426,8 +426,7 @@ export default function App() {
               {authMode === "login" ? "Masuk untuk lanjut" : "Daftar untuk lanjut"}
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              Task pertama bisa dicoba tanpa login. {authMode === "login" ? "Masuk" : "Daftar"} dulu untuk membuka task kedua
-              dan seterusnya.
+              {authMode === "login" ? "Masuk" : "Daftar"} supaya progres kamu tersimpan dan tidak hilang.
             </p>
             {authMode === "register" && (
               <input
