@@ -457,7 +457,7 @@ export default function App() {
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="Email atau username"
               autoComplete="username"
-              className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              className={authMode === "login" ? "mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400" : "hidden"}
             />
             <input
               type="password"
