@@ -1,13 +1,14 @@
 export interface AuthUser {
   id: number
-  name: string
+  username: string
   email: string
 }
 
 interface AuthResponse {
-  token: string
-  user: AuthUser
+	token: string
+	user: AuthUser
 }
+
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") || "http://localhost:8080"
 
@@ -27,12 +28,12 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return data as T
 }
 
-export function login(email: string, password: string) {
-  return post<AuthResponse>("/api/auth/login", { email, password })
+export function login(identifier: string, password: string) {
+  return post<AuthResponse>("/api/auth/login", { identifier, password })
 }
 
-export function register(name: string, email: string, password: string) {
-  return post<AuthResponse>("/api/auth/register", { name, email, password })
+export function register(username: string, email: string, password: string) {
+  return post<AuthResponse>("/api/auth/register", { username, email, password })
 }
 
 export async function me(token: string): Promise<AuthUser> {

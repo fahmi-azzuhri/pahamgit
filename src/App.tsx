@@ -49,7 +49,8 @@ export default function App() {
   const [sessionChecking, setSessionChecking] = useState(() => Boolean(localStorage.getItem("pahamgit:token")))
   const [loginOpen, setLoginOpen] = useState(false)
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
-  const [loginName, setLoginName] = useState("")
+  const [username, setUsername] = useState("")
+  const [identifier, setIdentifier] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [authError, setAuthError] = useState("")
@@ -64,12 +65,12 @@ export default function App() {
       .then((u) => {
         if (!active) return
         setAuthed(true)
-        localStorage.setItem("pahamgit:name", u.name)
+        localStorage.setItem("pahamgit:username", u.username)
       })
       .catch(() => {
         if (!active) return
         localStorage.removeItem("pahamgit:token")
-        localStorage.removeItem("pahamgit:name")
+        localStorage.removeItem("pahamgit:username")
         setAuthed(false)
       })
       .finally(() => {
@@ -265,14 +266,16 @@ export default function App() {
     try {
       const res =
         authMode === "register"
-          ? await register(loginName.trim(), email.trim(), password)
-          : await login(email.trim(), password)
+          ? await register(username.trim(), email.trim(), password)
+          : await login(identifier.trim(), password)
       localStorage.setItem("pahamgit:token", res.token)
-      localStorage.setItem("pahamgit:name", res.user.name)
+      localStorage.setItem("pahamgit:username", res.user.username)
       setAuthed(true)
       setSessionChecking(false)
       setLoginOpen(false)
-      setLoginName("")
+      setUsername("")
+      setIdentifier("")
+      setEmail("")
       setPassword("")
       next()
     } catch (err) {
@@ -412,22 +415,33 @@ export default function App() {
             {authMode === "register" && (
               <input
                 autoFocus
-                value={loginName}
-                onChange={(e) => setLoginName(e.target.value)}
-                placeholder="Nama kamu"
-                autoComplete="name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username"
+                autoComplete="username"
                 className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              />
+            )}
+            {authMode === "register" && (
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                autoComplete="email"
+                className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
               />
             )}
             <input
               autoFocus={authMode === "login"}
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              autoComplete="email"
-              className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="Email atau username"
+              autoComplete="username"
+              className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
             />
             <input
               type="password"
@@ -457,9 +471,9 @@ export default function App() {
                 type="submit"
                 disabled={
                   authBusy ||
-                  !email.trim() ||
+                  (authMode === "register" ? !email.trim() : !identifier.trim()) ||
                   !password ||
-                  (authMode === "register" && loginName.trim().length < 2)
+                  (authMode === "register" && (username.trim().length < 2 || username.trim().length > 50))
                 }
                 className="flex-1 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
