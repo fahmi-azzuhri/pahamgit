@@ -40,7 +40,7 @@ export default function App() {
   stateRef.current = state
   const historyRef = useRef<string[]>([])
   const histIdxRef = useRef(0)
-  const firstScenario = useRef(true)
+  const firstScenario = useRef(scenarioId)
 
   const [selected, setSelected] = useState<string | null>(null)
 
@@ -184,16 +184,16 @@ export default function App() {
     return () => {
       ro.disconnect()
       handle.dispose()
-      x.dispose()
+      if (term.current) term.current.dispose()
     }
   }, [])
 
   // on scenario (roadmap) change, print intro without clearing previous output
   useEffect(() => {
-    if (firstScenario.current) {
-      firstScenario.current = false
+    if (firstScenario.current === scenarioId) {
       return
     }
+    firstScenario.current = scenarioId
     const t = term.current
     if (!t) return
     // clear old session, keep the intro visible after reset
