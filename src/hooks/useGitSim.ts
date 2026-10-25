@@ -11,29 +11,63 @@ import {
   type Scenario,
 } from "../sim/scenarios"
 import type { CommandResult, RepoState } from "../sim/types"
+import type { ProgressEntry } from "../lib/progress"
+import { saveProgress } from "../lib/progress"
 
 export type { ChecklistState }
 
-export function useGitSim() {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const scenarioId = ROADMAP_ORDER[currentIndex]
+export function useGitSim(
+  serverProgress: ProgressEntry[] = [],
+  syncProgress?: (scenarioId: string, stepsDone: string[], completed: boolean, repoState?: string | null) => void,
+  progressLoaded = true,
+  serverCurrentScenarioId?: string | null,
+  onScenarioSwitch?: (scenarioId: string) => void | Promise<void>,
+) {
+  const [currentIndex, setCurrentIndex] = useState(-1)
+  const scenarioId = currentIndex >= 0 ? ROADMAP_ORDER[currentIndex] : ROADMAP_ORDER[0]
   const scenario: Scenario = useMemo(() => getScenario(scenarioId), [scenarioId])
+
+  const appliedServerPos = useRef(false)
+  useEffect(() => {
+    if (!progressLoaded) {
+      appliedServerPos.current = false
+      return
+    }
+    if (appliedServerPos.current) return
+    appliedServerPos.current = true
+    const idx = serverCurrentScenarioId ? ROADMAP_ORDER.indexOf(serverCurrentScenarioId) : -1
+    setCurrentIndex(idx >= 0 ? idx : 0)
+  }, [progressLoaded, serverCurrentScenarioId])
+
   const [state, setState] = useState<RepoState>(() => scenario.build())
+  const hydratedScenario = useRef<string | null>(null)
+
   const [history, setHistory] = useState<RepoState[]>([])
-  // items stay checked for the rest of the scenario once achieved,
-  // even if a later command changes the state back
   const [achieved, setAchieved] = useState<{ scenarioId: string; ids: Set<string> }>(() => ({
     scenarioId,
     ids: new Set(),
   }))
-  const lastScenario = useRef(scenario.id)
 
-  // reset when scenario changes
   useEffect(() => {
-    setState(scenario.build())
+    if (!progressLoaded) {
+      hydratedScenario.current = null
+      return
+    }
+    if (currentIndex < 0 || hydratedScenario.current === scenario.id) return
+    hydratedScenario.current = scenario.id
+    const entry = serverProgress.find((e) => e.scenario_id === scenario.id)
+    let restoredState = scenario.build()
+    if (entry?.repo_state) {
+      try {
+        restoredState = JSON.parse(entry.repo_state) as RepoState
+      } catch (error) {
+        console.error(`Gagal memulihkan state untuk skenario "${scenario.id}"`, error)
+      }
+    }
+    setState(restoredState)
     setHistory([])
-    setAchieved({ scenarioId: scenario.id, ids: new Set() })
-  }, [scenario])
+    setAchieved({ scenarioId: scenario.id, ids: new Set(entry?.steps_done ?? []) })
+  }, [currentIndex, progressLoaded, scenario, serverProgress])
 
   const undo = useCallback(() => {
     setHistory((h) => {
@@ -50,23 +84,25 @@ export function useGitSim() {
     setAchieved({ scenarioId: scenario.id, ids: new Set() })
   }, [scenario])
 
-  // remember every checklist item that has been satisfied at least once
-  useEffect(() => {
-    const switched = lastScenario.current !== scenario.id
-    lastScenario.current = scenario.id
-    setAchieved((prev) => {
-      if (switched) return { scenarioId: scenario.id, ids: new Set() }
-      const base = prev.scenarioId === scenario.id ? prev.ids : new Set<string>()
-      const ids = advanceAchieved(scenario, state, base)
-      if (prev.scenarioId === scenario.id && ids.size === base.size) return prev
-      return { scenarioId: scenario.id, ids }
-    })
-  }, [scenario, state])
-
   const checklist: ChecklistState[] = useMemo(() => {
     const kept = achieved.scenarioId === scenario.id ? achieved.ids : new Set<string>()
     return orderedChecklist(scenario, state, kept)
   }, [scenario, state, achieved])
+
+  useEffect(() => {
+    if (!progressLoaded || hydratedScenario.current !== scenario.id) return
+    const stepsDone = checklist.filter((item) => item.done).map((item) => item.id)
+    const completed = checklist.length > 0 && stepsDone.length === checklist.length
+    const repoJson = JSON.stringify(state)
+    if (syncProgress) {
+      syncProgress(scenario.id, stepsDone, completed, repoJson)
+      return
+    }
+    const tokenValue = localStorage.getItem("pahamgit:token") ?? ""
+    void saveProgress(tokenValue, scenario.id, stepsDone, completed, repoJson).catch((error: unknown) => {
+      console.error("Gagal menyimpan progres:", error)
+    })
+  }, [checklist, progressLoaded, scenario.id, state, syncProgress])
 
   const run = useCallback(
     (raw: string): CommandResult => {
@@ -89,6 +125,10 @@ export function useGitSim() {
       if (res.changed) {
         setHistory((h) => [...h, state])
         setState(res.state)
+        setAchieved((prev) => {
+          const base = prev.scenarioId === scenario.id ? prev.ids : new Set<string>()
+          return { scenarioId: scenario.id, ids: advanceAchieved(scenario, res.state, base) }
+        })
       }
       return res
     },
@@ -101,9 +141,12 @@ export function useGitSim() {
   }, [checklist])
 
   const hasNext = currentIndex < ROADMAP_ORDER.length - 1
-  const next = useCallback(() => {
-    setCurrentIndex((i) => Math.min(i + 1, ROADMAP_ORDER.length - 1))
-  }, [])
+  const next = useCallback(async () => {
+    const nextIndex = Math.min(currentIndex + 1, ROADMAP_ORDER.length - 1)
+    if (nextIndex === currentIndex) return
+    await onScenarioSwitch?.(ROADMAP_ORDER[nextIndex])
+    setCurrentIndex(nextIndex)
+  }, [currentIndex, onScenarioSwitch])
 
   return {
     scenario,

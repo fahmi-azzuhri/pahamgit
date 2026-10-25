@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
+import { useProgress } from "./hooks/useProgress"
+import { setCurrentScenario } from "./lib/progress"
 import { ReactFlowProvider } from "@xyflow/react"
 import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
@@ -9,12 +11,20 @@ import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
 import { login, logout, me, register } from "./lib/auth"
+import { getScenario, ROADMAP_ORDER } from "./sim/scenarios"
+import type { RepoState } from "./sim/types"
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
 const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
 const CONTROLS = "Tab = autocomplete · ↑/↓ = riwayat · Ctrl+C = batal"
 
 export default function App() {
+  const token = () => localStorage.getItem("pahamgit:token") ?? ""
+  const { entries: progressEntries, upsert, loaded: progressLoaded, currentScenarioId } = useProgress(token())
+  const onScenarioSwitch = useCallback(
+    (sid: string) => setCurrentScenario(token(), sid),
+    [],
+  )
   const {
     scenario,
     scenarioId,
@@ -27,7 +37,30 @@ export default function App() {
     progress,
     hasNext,
     next,
-  } = useGitSim()
+  } = useGitSim(progressEntries, upsert, progressLoaded, currentScenarioId, onScenarioSwitch)
+  const completedTaskIds = useMemo(() => {
+    return ROADMAP_ORDER.filter((id) => {
+      const task = getScenario(id)
+      const entry = progressEntries.find((item) => item.scenario_id === id)
+      if (!entry) return false
+      if (task.checklist.every((item) => entry.steps_done.includes(item.id))) return true
+      if (!entry.repo_state) return false
+      try {
+        const savedState = JSON.parse(entry.repo_state) as RepoState
+        return task.checklist.every((item) => item.done(savedState))
+      } catch (error) {
+        console.error(`Gagal membaca progres skenario "${id}":`, error)
+        return false
+      }
+    })
+  }, [progressEntries])
+  const highestAchievedLevel = useMemo(() => {
+    const levelRank = { Beginner: 1, Intermediate: 2, Advanced: 3 }
+    return completedTaskIds.reduce<"Beginner" | "Intermediate" | "Advanced" | null>((highest, id) => {
+      const level = getScenario(id).difficulty
+      return !highest || levelRank[level] > levelRank[highest] ? level : highest
+    }, null)
+  }, [completedTaskIds])
 
   const termRef = useRef<HTMLDivElement>(null)
   const term = useRef<Terminal | null>(null)
@@ -57,6 +90,8 @@ export default function App() {
   const [password, setPassword] = useState("")
   const [authError, setAuthError] = useState("")
   const [authBusy, setAuthBusy] = useState(false)
+  const [taskSwitchError, setTaskSwitchError] = useState("")
+  const [switchingTask, setSwitchingTask] = useState(false)
 
   // drop stale sessions on load instead of trusting localStorage blindly
   useEffect(() => {
@@ -252,15 +287,24 @@ export default function App() {
     setSelected(null)
   }
 
-  const handleNext = () => {
-    if (sessionChecking) return
+  const handleNext = async () => {
+    if (sessionChecking || switchingTask) return
     if (!authed) {
       setAuthMode("login")
       setAuthError("")
       setLoginOpen(true)
       return
     }
-    next()
+    setSwitchingTask(true)
+    setTaskSwitchError("")
+    try {
+      await next()
+    } catch (error) {
+      console.error("Gagal menyimpan posisi task:", error)
+      setTaskSwitchError("Posisi task gagal disimpan. Coba lagi.")
+    } finally {
+      setSwitchingTask(false)
+    }
   }
 
   const handleAuth = async (e: FormEvent) => {
@@ -393,16 +437,19 @@ export default function App() {
             {hasNext && progress.done === progress.total && (
               <button
                 onClick={handleNext}
-                disabled={sessionChecking}
+                disabled={sessionChecking || switchingTask}
                 className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sessionChecking
                   ? "Memeriksa sesi..."
+                  : switchingTask
+                    ? "Menyimpan posisi..."
                   : authed
                     ? "Lanjut ke task berikutnya →"
                     : "Login & lanjut ke task berikutnya →"}
               </button>
             )}
+            {taskSwitchError && <p className="mt-2 text-xs text-rose-400">{taskSwitchError}</p>}
             {!hasNext && progress.done === progress.total && (
               <p className="mt-3 text-xs text-emerald-300">✓ Roadmap selesai</p>
             )}
@@ -532,7 +579,11 @@ export default function App() {
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">progres</dt>
-                <dd className="text-slate-300">{progress.done}/{progress.total} task</dd>
+                <dd className="text-slate-300">{completedTaskIds.length}/{ROADMAP_ORDER.length} task</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">level terakhir</dt>
+                <dd className="text-slate-300">{highestAchievedLevel ?? "Belum ada"}</dd>
               </div>
             </dl>
             <button
@@ -548,4 +599,3 @@ export default function App() {
     </div>
   )
 }
-
