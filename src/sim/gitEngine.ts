@@ -61,6 +61,8 @@ function clone(state: RepoState): RepoState {
       state.head.type === "branch"
         ? { type: "branch", name: state.head.name }
         : { type: "detached", commit: state.head.commit },
+    stash: state.stash ? [...state.stash] : [],
+    remote: state.remote ? { ...state.remote } : {},
   }
 }
 
@@ -147,6 +149,100 @@ export function applyCommand(
       state.head = { type: "detached", commit: c }
       state.staged = true
       return out(state, `HEAD is now at ${c} ${state.commits[c].message}`, true, true)
+    }
+    case "revert": {
+      const ref = cmd.args[0] ?? "HEAD"
+      const target = resolveRef(state, ref)
+      if (!target) return out(state, `fatal: bad revision '${ref}'`, false, false)
+      const cur = headCommit(state)
+      if (!cur) return out(state, "fatal: no HEAD to revert", false, false)
+      const commit = makeCommit(state, `Revert "${state.commits[target].message}"`, [cur], currentLane(state))
+      if (state.head.type === "branch") moveBranchForward(state, state.head.name, commit.id)
+      else state.head = { type: "detached", commit: commit.id }
+      state.staged = false
+      return out(state, `[${state.head.type === "branch" ? state.head.name : "detached"} ${commit.id}] Revert "${state.commits[target].message}"`, true, true)
+    }
+    case "stash": {
+      if (cmd.args[0] === "pop" || cmd.args[0] === "apply") {
+        if (!state.stash?.length)
+          return out(state, "No stash entries found.", false, false)
+        const restored = state.stash[state.stash.length - 1]
+        state.stash = state.stash.slice(0, -1)
+        state.staged = true
+        return out(state, `Restored ${restored.branches && restored.head.type === "branch" ? restored.head.name : "changes"} from stash.`, true, true)
+      }
+      if (cmd.args[0] === "list") {
+        const list = state.stash ?? []
+        if (!list.length) return out(state, "No stash entries found.", true, false)
+        return out(state, list.map((_, i) => `stash@{${i}}: WIP on main`).join("\n"), true, false)
+      }
+      if (!state.staged)
+        return out(state, "No local changes to save.", false, false)
+      state.stash = [...(state.stash ?? []), clone(state)]
+      state.staged = false
+      return out(state, "Saved working directory and index state WIP on main.", true, true)
+    }
+    case "rebase": {
+      const name = cmd.args[0]
+      if (!name) return out(state, "fatal: rebase requires a branch or ref", false, false)
+      const onto = resolveRef(state, name)
+      if (!onto) return out(state, `fatal: invalid upstream '${name}'`, false, false)
+      if (state.head.type !== "branch")
+        return out(state, "fatal: cannot rebase in detached HEAD", false, false)
+      const cur = state.branches[state.head.name]
+      // collect commits unique to current branch (not reachable from onto)
+      const ontoReach = reachableFrom(state, onto)
+      const stack: CommitId[] = [cur]
+      const unique: CommitId[] = []
+      const seen = new Set<CommitId>()
+      while (stack.length) {
+        const id = stack.pop()!
+        if (seen.has(id) || ontoReach.has(id)) continue
+        seen.add(id)
+        unique.push(id)
+        const c = state.commits[id]
+        if (c) for (const p of c.parents) stack.push(p)
+      }
+      if (!unique.length) return out(state, `Current branch ${state.head.name} is up to date.`, true, false)
+      unique.sort((a, b) => state.commits[a].order - state.commits[b].order)
+      // replay commits on top of onto
+      let base: CommitId = onto
+      for (const id of unique) {
+        const src = state.commits[id]
+        const nc = makeCommit(state, src.message, [base], currentLane(state))
+        base = nc.id
+      }
+      state.branches[state.head.name] = base
+      state.staged = true
+      return out(state, `Successfully rebased and updated ${state.head.name} onto ${name}.`, true, true)
+    }
+    case "push": {
+      if (state.head.type !== "branch")
+        return out(state, "fatal: cannot push in detached HEAD", false, false)
+      const branch = state.head.name
+      const key = `origin/${branch}`
+      const cur = state.branches[branch]
+      if (state.remote?.[key] === cur)
+        return out(state, "Everything up-to-date", true, false)
+      if (!state.remote) state.remote = {}
+      state.remote[key] = cur
+      state.staged = true
+      return out(state, `To origin\n * [new branch]      ${branch} -> ${branch}`, true, true)
+    }
+    case "pull": {
+      if (state.head.type !== "branch")
+        return out(state, "fatal: cannot pull in detached HEAD", false, false)
+      const branch = state.head.name
+      const key = `origin/${branch}`
+      const cur = state.branches[branch]
+      const remoteId = state.remote?.[key]
+      if (!remoteId) return out(state, "There is no tracking information for the current branch. Push first.", false, false)
+      if (remoteId === cur) return out(state, "Already up to date.", true, false)
+      if (isAncestor(state, remoteId, cur)) return out(state, "Already up to date.", true, false)
+      const merge = makeCommit(state, `Merge branch '${key}'`, [cur, remoteId], currentLane(state))
+      moveBranchForward(state, branch, merge.id)
+      state.staged = true
+      return out(state, `Merge made by the 'ort' strategy.`, true, true)
     }
     case "commit": {
       const msg = cmd.message
@@ -328,6 +424,11 @@ function helpLines(): string {
   git commit -m "msg"         record a commit
   git merge <branch>          merge (--no-ff optional)
   git reset [--hard] [id]     move branch back
+  git revert [id]             undo a commit with a new commit
+  git rebase <branch>         replay commits on top of another branch
+  git stash [pop|list]        save / restore working changes
+  git push [origin <branch>]  publish branch to remote (simulated)
+  git pull [origin <branch>]  fetch from remote (simulated)
   git tag <name> [id]         create a tag
   clear                       clear the terminal
   help                        show this help`
@@ -343,6 +444,8 @@ export function initialRepo(): RepoState {
     nextLane: 1,
     counter: 0,
     staged: true,
+    stash: [],
+    remote: {},
   }
   state.branchLanes["main"] = 0
   const c1 = makeCommit(state, "Initial commit", [], 0)

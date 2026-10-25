@@ -1023,19 +1023,277 @@ export const SCENARIOS: Scenario[] = [
     ],
     build: initialRepo,
   },
+  {
+    id: "init-first-commit",
+    title: "Init & Commit Pertama",
+    difficulty: "Beginner",
+    instructions: [
+      "Repo sudah tersedia. Buat commit pertama di branch `main` dengan `git commit -m`.",
+    ],
+    checklist: [
+      {
+        id: "init",
+        label: "Repo siap (git init)",
+        done: () => true,
+      },
+      {
+        id: "first-commit",
+        label: "Buat commit pertama",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+    ],
+    hints: ["Gunakan `git commit -m` untuk membuat commit pertama."],
+    answer: ['git commit -m "init"'],
+    build: initialRepo,
+  },
+
+  {
+    id: "reset-modes",
+    title: "Reset: Soft / Mixed / Hard",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat dua commit, lalu reset `main` ke commit pertama dengan `git reset --hard HEAD~2`. Coba juga mode `--soft` dan default (mixed) untuk melihat perbedaannya.",
+    ],
+    checklist: [
+      {
+        id: "commit-one",
+        label: "Buat commit pertama",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+      {
+        id: "commit-two",
+        label: "Buat commit kedua",
+        done: (s) => Object.keys(s.commits).length >= 3,
+      },
+      {
+        id: "reset",
+        label: "Reset `main` ke commit pertama",
+        done: (s) => {
+          const main = s.branches["main"]
+          const first = Object.values(s.commits).find((c) => c.parents.length === 0)?.id
+          return Boolean(main && first && main === first)
+        },
+      },
+    ],
+    hints: [
+      "`git reset --soft HEAD~2` hanya memindahkan HEAD.",
+      "`git reset HEAD~2` (mixed) juga meng-unstage.",
+      "`git reset --hard HEAD~2` membuang semua perubahan.",
+    ],
+    answer: ['git commit -m "one"', 'git commit -m "two"', "git reset --hard HEAD~2"],
+    build: initialRepo,
+  },
+  {
+    id: "resolve-conflict",
+    title: "Selesaikan Konflik Merge",
+    difficulty: "Intermediate",
+    instructions: [
+      "Commit di `main`, buat branch `side` dan commit di sana, kembali ke `main` dan commit lagi, lalu merge `side` — kedua branch maju sehingga merge menghasilkan merge commit (simulasi konflik yang selesai otomatis).",
+    ],
+    checklist: [
+      {
+        id: "branch",
+        label: "Buat branch `side`",
+        done: (s) => Boolean(s.branches["side"]),
+      },
+      {
+        id: "diverge",
+        label: "Buat commit di `main` dan di `side` (keduanya maju)",
+        done: (s) => {
+          const m = s.branches["main"]
+          const sd = s.branches["side"]
+          if (!m || !sd) return false
+          return !isAncestor(s, sd, m) && !isAncestor(s, m, sd)
+        },
+      },
+      {
+        id: "merge-commit",
+        label: "Merge `side` ke `main` (merge commit terbentuk)",
+        done: (s) => {
+          const m = s.branches["main"]
+          return Boolean(m && s.commits[m]?.parents.length === 2)
+        },
+      },
+    ],
+    hints: [
+      "Commit di main dulu, lalu `git checkout -b side` dan commit lagi.",
+      "Kembali ke main, commit lagi, lalu `git merge side`.",
+    ],
+    answer: [
+      'git commit -m "main change"',
+      "git checkout -b side",
+      'git commit -m "side change"',
+      "git checkout main",
+      'git commit -m "more main change"',
+      "git merge side",
+    ],
+    build: initialRepo,
+  },
+  {
+    id: "rebase-branch",
+    title: "Rebase Branch",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat branch `topic` dan commit di sana, kembali ke `main` dan commit lagi, lalu dari `topic` jalankan `git rebase main` agar commit topic dipindah ke atas main.",
+    ],
+    checklist: [
+      {
+        id: "topic",
+        label: "Buat branch `topic` dengan satu commit",
+        done: (s) => Boolean(s.branches["topic"]),
+      },
+      {
+        id: "main-ahead",
+        label: "`main` maju secara terpisah setelah branch dibuat",
+        done: (s) => {
+          const m = s.branches["main"]
+          const t = s.branches["topic"]
+          if (!m || !t) return false
+          return Boolean(s.commits[m] && !isAncestor(s, m, t))
+        },
+      },
+      {
+        id: "rebase",
+        label: "Rebase `topic` ke atas `main` (main jadi ancestor topic)",
+        done: (s) => {
+          const m = s.branches["main"]
+          const t = s.branches["topic"]
+          if (!m || !t) return false
+          return isAncestor(s, m, t)
+        },
+      },
+    ],
+    hints: [
+      "Buat `git checkout -b topic` dan commit.",
+      "Kembali ke `main`, commit lagi, lalu `git checkout topic`.",
+      "Jalankan `git rebase main`.",
+    ],
+    answer: [
+      "git checkout -b topic",
+      'git commit -m "topic work"',
+      "git checkout main",
+      'git commit -m "main work"',
+      "git checkout topic",
+      "git rebase main",
+    ],
+    build: initialRepo,
+  },
+
+  {
+    id: "revert-commit",
+    title: "Revert Commit",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat commit baru, lalu batalkan dengan `git revert HEAD` — commit pembatal tetap tercatat.",
+    ],
+    checklist: [
+      {
+        id: "commit",
+        label: "Buat commit",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+      {
+        id: "revert",
+        label: "Revert HEAD (muncul commit `Revert ...`)",
+        done: (s) => {
+          const main = s.branches["main"]
+          return Boolean(main && s.commits[main]?.message.startsWith("Revert"))
+        },
+      },
+    ],
+    hints: ["Gunakan `git revert HEAD` untuk membatalkan commit terakhir tanpa menghapus sejarah."],
+    answer: ['git commit -m "bad change"', "git revert HEAD"],
+    build: initialRepo,
+  },
+  {
+    id: "stash-work",
+    title: "Stash Pekerjaan",
+    difficulty: "Intermediate",
+    instructions: [
+      "Simpan perubahan yang belum di-commit dengan `git stash`, lalu kembalikan dengan `git stash pop` dan commit.",
+    ],
+    checklist: [
+      {
+        id: "stash",
+        label: "Simpan perubahan ke stash",
+        done: (s) => (s.stash?.length ?? 0) > 0,
+      },
+      {
+        id: "pop",
+        label: "Kembalikan stash (`stash pop`) — stash kembali kosong",
+        done: (s) => (s.stash?.length ?? 0) === 0,
+      },
+      {
+        id: "commit",
+        label: "Commit pekerjaan yang dikembalikan",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+    ],
+    hints: [
+      "`git stash` menyimpan perubahan dan membersihkan working tree.",
+      "`git stash pop` mengembalikan perubahan terakhir.",
+    ],
+    answer: ["git stash", "git stash pop", 'git commit -m "stashed work"'],
+    build: initialRepo,
+  },
+  {
+    id: "remote-push-pull",
+    title: "Remote: Push & Pull (Simulasi)",
+    difficulty: "Intermediate",
+    instructions: [
+      "Buat commit lalu `git push origin main` untuk mengirim, dan `git pull origin main` untuk menarik (simulasi remote, tidak mengubah graf).",
+    ],
+    checklist: [
+      {
+        id: "commit",
+        label: "Buat commit",
+        done: (s) => Object.keys(s.commits).length >= 2,
+      },
+      {
+        id: "push",
+        label: "Push ke `origin/main`",
+        done: (s) => {
+          const m = s.branches["main"]
+          return Boolean(m && s.remote?.["origin/main"] === m)
+        },
+      },
+      {
+        id: "pull",
+        label: "Pull dari `origin/main` (sudah sinkron)",
+        done: (s) => {
+          const m = s.branches["main"]
+          return Boolean(m && s.remote?.["origin/main"] === m)
+        },
+      },
+    ],
+    hints: [
+      "Commit dulu dengan `git commit -m`.",
+      "`git push origin main` memperbarui remote tracking `origin/main`.",
+    ],
+    answer: ['git commit -m "share work"', "git push origin main", "git pull origin main"],
+    build: initialRepo,
+  },
+
 
 ]
 
 export const ROADMAP_ORDER = [
   "first-commit",
+  "init-first-commit",
   "feature-merge",
   "three-commits",
   "switch-branches",
+  "revert-commit",
   "tag-release",
   "tag-old-commit",
   "release-merge",
   "reset-recovery",
+  "reset-modes",
+  "stash-work",
   "merge-ff-only",
+  "resolve-conflict",
+  "rebase-branch",
+  "remote-push-pull",
   "tag-survives-reset",
   "merge-two-commits",
   "branch-from-tag",

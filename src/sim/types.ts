@@ -26,6 +26,10 @@ export interface RepoState {
   counter: number
   /** true when there are staged changes ready to commit */
   staged: boolean
+  /** stack of stashed states (most recent last) */
+  stash?: RepoState[]
+  /** simulated remote tracking refs, e.g. origin/main -> commit id */
+  remote?: Record<string, CommitId>
 }
 
 export interface CommandResult {
