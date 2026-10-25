@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { useProgress } from "./hooks/useProgress"
 import { setCurrentScenario } from "./lib/progress"
-import { ReactFlowProvider } from "@xyflow/react"
-import { Terminal } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
-import { FitAddon } from "@xterm/addon-fit"
+import { lazy, Suspense } from "react"
+
 import { TopBar } from "./components/TopBar"
-import { GraphPanel } from "./components/GraphPanel"
+import { GraphPanelLazy } from "./components/GraphPanelLazy"
 import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
@@ -14,6 +13,12 @@ import { login, logout, me, register } from "./lib/auth"
 import { HintPanel } from "./components/HintPanel"
 import { getScenario, ROADMAP_ORDER } from "./sim/scenarios"
 import type { RepoState } from "./sim/types"
+
+const LazyReactFlowProvider = lazy(() => import("@xyflow/react").then(m => ({ default: m.ReactFlowProvider })))
+const loadXterm = () =>
+  Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]) as Promise<
+    [{ Terminal: typeof import("@xterm/xterm").Terminal }, { FitAddon: typeof import("@xterm/addon-fit").FitAddon }]
+  >
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
 const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
@@ -64,8 +69,8 @@ export default function App() {
   }, [completedTaskIds])
 
   const termRef = useRef<HTMLDivElement>(null)
-  const term = useRef<Terminal | null>(null)
-  const fit = useRef<FitAddon | null>(null)
+  const term = useRef<InstanceType<typeof import("@xterm/xterm").Terminal> | null>(null)
+  const fit = useRef<InstanceType<typeof import("@xterm/addon-fit").FitAddon> | null>(null)
   // refs keep latest closures for the terminal data handler (created once)
   const inputRef = useRef("")
   const runRef = useRef(run)
@@ -121,37 +126,43 @@ export default function App() {
     }
   }, [])
 
-  // init terminal once
+  // init terminal once (xterm is loaded lazily to shrink the initial bundle)
   useEffect(() => {
     const el = termRef.current
     if (!el) return
-    const x = new Terminal({
-      theme: { background: "#0b1220", foreground: "#e2e8f0" },
-      cursorBlink: true,
-      fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace",
-      fontSize: 13,
-      scrollback: 1000,
-      // engine output uses "\n" only: without this every new line keeps the previous column
-      convertEol: true,
-    })
-    const f = new FitAddon()
-    x.loadAddon(f)
-    x.open(el)
-    f.fit()
-    term.current = x
-    fit.current = f
+    let disposed = false
+    let handle: { dispose: () => void } | null = null
+    let ro: ResizeObserver | null = null
 
-    const prompt = () => x.write(PROMPT)
-    const rewrite = (value: string) => {
-      x.write(`\r\x1b[K${PROMPT}${value}`)
-      inputRef.current = value
-    }
+    loadXterm().then(([{ Terminal }, { FitAddon }]) => {
+      if (disposed) return
+      const x = new Terminal({
+        theme: { background: "#0b1220", foreground: "#e2e8f0" },
+        cursorBlink: true,
+        fontFamily: "JetBrains Mono, Fira Code, Consolas, monospace",
+        fontSize: 13,
+        scrollback: 1000,
+        // engine output uses "\n" only: without this every new line keeps the previous column
+        convertEol: true,
+      })
+      const f = new FitAddon()
+      x.loadAddon(f)
+      x.open(el)
+      f.fit()
+      term.current = x
+      fit.current = f
 
-    x.writeln(INTRO)
-    x.writeln(CONTROLS + "\n")
-    prompt()
+      const prompt = () => x.write(PROMPT)
+      const rewrite = (value: string) => {
+        x.write(`\r\x1b[K${PROMPT}${value}`)
+        inputRef.current = value
+      }
 
-    const handle = x.onData((data: string) => {
+      x.writeln(INTRO)
+      x.writeln(CONTROLS + "\n")
+      prompt()
+
+      const onData = (data: string) => {
       if (data === "\r") {
         const cmd = inputRef.current.trim()
         x.writeln("")
@@ -210,20 +221,24 @@ export default function App() {
       }
       inputRef.current += data
       x.write(data)
-    })
-
-    const ro = new ResizeObserver(() => {
-      try {
-        f.fit()
-      } catch {
-        /* container hidden */
       }
+
+      handle = x.onData(onData)
+
+      ro = new ResizeObserver(() => {
+        try {
+          f.fit()
+        } catch {
+          /* container hidden */
+        }
+      })
+      ro.observe(el)
     })
-    ro.observe(el)
 
     return () => {
-      ro.disconnect()
-      handle.dispose()
+      disposed = true
+      ro?.disconnect()
+      handle?.dispose()
       if (term.current) term.current.dispose()
     }
   }, [])
@@ -362,18 +377,20 @@ export default function App() {
       />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative min-w-0 flex-1 border-r border-[#1e293b]">
-          <ReactFlowProvider>
-            <GraphPanel
-              state={state}
-              scenarioId={scenarioId}
-              onSelectCommit={setSelected}
-              onHint={handleHint}
-              onShowAnswer={handleShowAnswer}
-              canUndo={canUndo}
-              onUndo={undo}
-              onReset={handleReset}
-            />
-          </ReactFlowProvider>
+          <Suspense fallback={null}>
+            <LazyReactFlowProvider>
+              <GraphPanelLazy
+                state={state}
+                scenarioId={scenarioId}
+                onSelectCommit={setSelected}
+                onHint={handleHint}
+                onShowAnswer={handleShowAnswer}
+                canUndo={canUndo}
+                onUndo={undo}
+                onReset={handleReset}
+              />
+            </LazyReactFlowProvider>
+          </Suspense>
           {selected && state.commits[selected] && (
             <CommitDrawer
               commit={state.commits[selected]}

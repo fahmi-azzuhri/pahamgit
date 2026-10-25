@@ -12,7 +12,7 @@ import { BottomToolbar } from "./BottomToolbar"
 
 const nodeTypes = { commit: CommitNode }
 
-interface GraphPanelProps {
+export interface GraphPanelProps {
   state: RepoState
   scenarioId: string
   onSelectCommit: (id: string) => void
