@@ -11,6 +11,7 @@ import { CommitDrawer } from "./components/CommitDrawer"
 import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
 import { login, logout, me, register } from "./lib/auth"
+import { HintPanel } from "./components/HintPanel"
 import { getScenario, ROADMAP_ORDER } from "./sim/scenarios"
 import type { RepoState } from "./sim/types"
 
@@ -398,6 +399,11 @@ export default function App() {
                 <li key={i}>{line}</li>
               ))}
             </ul>
+            <HintPanel
+              hints={scenario.hints}
+              checklist={checklist}
+              activeStep={checklist.findIndex((c) => !c.done)}
+            />
             <ul className="space-y-1 text-xs">
               {checklist.map((c, i) => {
                 const active = checklist.findIndex((x) => !x.done)
