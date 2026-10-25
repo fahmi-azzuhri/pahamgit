@@ -1,3 +1,13 @@
+export type ConceptId =
+  | "branch"
+  | "head"
+  | "commit"
+  | "merge"
+  | "remote"
+  | "reset"
+  | "stash"
+  | "rebase"
+
 export interface Concept {
   id: ConceptId
   label: string
@@ -52,6 +62,6 @@ export const CONCEPTS: Concept[] = [
     id: "rebase",
     label: "Rebase",
     title: "Apa itu rebase?",
-    body: "`rebase` memindahkan (memainkan ulang) commit-mu ke atas basis lain — seolah kamu mulai bekerja dari titik itu. Hasilnya riwayat linear dan rapi, tapi commit lama "ditulis ulang". Aturan emas: jangan rebase commit yang sudah di-push ke shared branch, karena orang lain mungkin sudah membangun di atasnya.",
+    body: "`rebase` memindahkan (memainkan ulang) commit-mu ke atas basis lain — seolah kamu mulai bekerja dari titik itu. Hasilnya riwayat linear dan rapi, tapi commit lama 'ditulis ulang'. Aturan emas: jangan rebase commit yang sudah di-push ke shared branch, karena orang lain mungkin sudah membangun di atasnya.",
   },
 ]
