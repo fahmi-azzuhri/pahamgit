@@ -1097,8 +1097,28 @@ export const SCENARIOS: Scenario[] = [
         done: (s) => Boolean(s.branches["side"]),
       },
       {
-        id: "diverge",
-        label: "Buat commit di `main` dan di `side` (keduanya maju)",
+        id: "checkout-main",
+        label: "Switch kembali ke main",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "main-commit",
+        label: "Buat satu commit di `main`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const base = s.branches["side"]
+          if (!m) return false
+          return Boolean(base && m !== base && isAncestor(s, base, m))
+        },
+      },
+      {
+        id: "checkout-side",
+        label: "Switch ke branch `side`",
+        done: (s) => s.head.type === "branch" && s.head.name === "side",
+      },
+      {
+        id: "side-commit",
+        label: "Buat satu commit di `side`",
         done: (s) => {
           const m = s.branches["main"]
           const sd = s.branches["side"]
@@ -1107,24 +1127,42 @@ export const SCENARIOS: Scenario[] = [
         },
       },
       {
+        id: "merge-main",
+        label: "Dari `side`, merge `main` (menyelesaikan konflik)",
+        done: (s) => {
+          const sd = s.branches["side"]
+          return Boolean(sd && s.commits[sd]?.parents.length === 2)
+        },
+      },
+      {
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
         id: "merge-commit",
-        label: "Merge `side` ke `main` (merge commit terbentuk)",
+        label: "Terakhir: merge `side` ke `main`",
         done: (s) => {
           const m = s.branches["main"]
-          return Boolean(m && s.commits[m]?.parents.length === 2)
+          const sd = s.branches["side"]
+          return Boolean(m && sd && isAncestor(s, sd, m))
         },
       },
     ],
     hints: [
-      "Commit di main dulu, lalu `git checkout -b side` dan commit lagi.",
-      "Kembali ke main, commit lagi, lalu `git merge side`.",
+      "Buat branch: `git checkout -b side`, lalu kembali `git checkout main`.",
+      "Commit di main, pindah ke side (`git checkout side`), commit di sana.",
+      "Dari `side`, gabungkan main: `git merge main` — ini menyelesaikan konflik.",
+      "Terakhir: `git checkout main` lalu `git merge side`.",
     ],
     answer: [
-      'git commit -m "main change"',
       "git checkout -b side",
-      'git commit -m "side change"',
       "git checkout main",
-      'git commit -m "more main change"',
+      'git commit -m "main change"',
+      "git checkout side",
+      'git commit -m "side change"',
+      "git merge main",
+      "git checkout main",
       "git merge side",
     ],
     build: initialRepo,
@@ -1139,27 +1177,47 @@ export const SCENARIOS: Scenario[] = [
     checklist: [
       {
         id: "topic",
-        label: "Buat branch `topic` dengan satu commit",
+        label: "Buat branch `topic`",
         done: (s) => Boolean(s.branches["topic"]),
       },
       {
-        id: "main-ahead",
-        label: "`main` maju secara terpisah setelah branch dibuat",
+        id: "commit-topic",
+        label: "Buat satu commit di `topic`",
         done: (s) => {
-          const m = s.branches["main"]
           const t = s.branches["topic"]
-          if (!m || !t) return false
-          return Boolean(s.commits[m] && !isAncestor(s, m, t))
+          if (!t) return false
+          const base = Object.values(s.commits).find((c) => c.parents.length === 0)?.id
+          return Boolean(t !== base && s.commits[t]?.parents.length >= 1)
         },
       },
       {
-        id: "rebase",
-        label: "Rebase `topic` ke atas `main` (main jadi ancestor topic)",
+        id: "back-main",
+        label: "Kembali ke `main`",
+        done: (s) => s.head.type === "branch" && s.head.name === "main",
+      },
+      {
+        id: "commit-main",
+        label: "Buat satu commit di `main`",
         done: (s) => {
           const m = s.branches["main"]
           const t = s.branches["topic"]
           if (!m || !t) return false
-          return isAncestor(s, m, t)
+          return !isAncestor(s, t, m) && !isAncestor(s, m, t)
+        },
+      },
+      {
+        id: "checkout-topic",
+        label: "Kembali ke `topic`",
+        done: (s) => s.head.type === "branch" && s.head.name === "topic",
+      },
+      {
+        id: "rebase",
+        label: "Rebase `topic` ke atas `main`",
+        done: (s) => {
+          const m = s.branches["main"]
+          const t = s.branches["topic"]
+          if (!m || !t) return false
+          return isAncestor(s, m, t) && s.head.type === "branch" && s.head.name === "topic"
         },
       },
     ],
@@ -1283,8 +1341,8 @@ export const ROADMAP_ORDER = [
   "feature-merge",
   "three-commits",
   "switch-branches",
-  "revert-commit",
   "tag-release",
+  "revert-commit",
   "tag-old-commit",
   "release-merge",
   "reset-recovery",

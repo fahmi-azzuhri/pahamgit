@@ -322,6 +322,21 @@ function out(
 
 function resolveRef(state: RepoState, ref: string): CommitId | null {
   if (state.branches[ref]) return state.branches[ref]
+  if (ref === "HEAD") return headCommit(state)
+  // HEAD~N: walk N parents back from HEAD
+  const headBack = /^(?:HEAD|@)~(\d+)$/.exec(ref)
+  if (headBack) {
+    let cur = headCommit(state)
+    for (let i = 0; i < Number(headBack[1]) && cur; i++) cur = state.commits[cur]?.parents[0] ?? null
+    return cur
+  }
+  // <branch|tag>~N
+  const refBack = /^(.+)~(\d+)$/.exec(ref)
+  if (refBack) {
+    let cur = resolveRef(state, refBack[1])
+    for (let i = 0; i < Number(refBack[2]) && cur; i++) cur = state.commits[cur]?.parents[0] ?? null
+    return cur
+  }
   if (state.tags[ref]) return state.tags[ref]
   const exact = Object.keys(state.commits).find((id) => id === ref || id.startsWith(ref))
   return exact ?? null
