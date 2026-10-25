@@ -158,7 +158,7 @@ export default function App() {
           x.clear()
         } else if (cmd) {
           const res = runRef.current(cmd)
-          if (res.output) x.writeln(res.output)
+          if (res.output) x.writeln(res.ok ? res.output : `\x1b[31m${res.output.split("\n")[0]}\x1b[0m${res.output.includes("\n") ? "\n\x1b[36m" + res.output.split("\n").slice(1).join("\n") + "\x1b[0m" : ""}`)
           historyRef.current.push(cmd)
         }
         histIdxRef.current = historyRef.current.length
@@ -255,7 +255,7 @@ export default function App() {
     if (!t) return
     t.writeln(`${PROMPT}${cmd}`)
     const res = run(cmd)
-    if (res.output) t.writeln(res.output)
+    if (res.output) t.writeln(res.ok ? res.output : `\x1b[31m${res.output.split("\n")[0]}\x1b[0m${res.output.includes("\n") ? "\n\x1b[36m" + res.output.split("\n").slice(1).join("\n") + "\x1b[0m" : ""}`)
     t.write(PROMPT)
     inputRef.current = ""
   }

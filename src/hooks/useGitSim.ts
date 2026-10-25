@@ -13,6 +13,7 @@ import {
 import type { CommandResult, RepoState } from "../sim/types"
 import type { ProgressEntry } from "../lib/progress"
 import { saveProgress } from "../lib/progress"
+import { tipFor, blockedStepTip } from "../sim/tips"
 
 export type { ChecklistState }
 
@@ -116,10 +117,20 @@ export function useGitSim(
         if (blocked !== null) {
           return {
             state,
-            output: `error: "${trimmed}" does not complete the current step: ${scenario.checklist[blocked].label.replace(/`/g, "")}`,
+            output: [
+              `error: "${trimmed}" does not complete the current step: ${scenario.checklist[blocked].label.replace(/`/g, "")}`,
+              `💡 tip: ${blockedStepTip(scenario.checklist[blocked].label)}`,
+            ].join("\n"),
             ok: false,
             changed: false,
           }
+        }
+      }
+      // educational feedback: failed commands get an explanation of why
+      if (!res.ok) {
+        const tip = tipFor(res.output)
+        if (tip) {
+          return { ...res, output: `${res.output}\n${tip}` }
         }
       }
       if (res.changed) {
