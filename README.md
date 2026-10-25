@@ -1,4 +1,17 @@
-# React + TypeScript + Vite
+# PahamGit Frontend
+
+This is the frontend for PahamGit — a fun little app for learning Git by actually *doing* it. Built with React + TypeScript + Vite, and it talks to the backend over a REST API.
+
+If you're just here to get it running:
+
+```bash
+npm install
+npm run dev
+```
+
+That's it. The rest of this file is the usual Vite template notes, kept for reference.
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
@@ -6,6 +19,7 @@ Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
 - [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
 
 ## React Compiler
 
