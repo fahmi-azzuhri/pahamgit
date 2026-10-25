@@ -360,7 +360,22 @@ function statusText(state: RepoState): string {
   const staged = state.staged
     ? `\nChanges to be committed:\n  \x1b[32m(new file)\x1b[0m   simulated_change.txt`
     : `\nnothing to commit, working tree clean`
-  return `${branchLine}${staged}`
+
+  // remote tracking info
+  let remoteInfo = ""
+  if (head && state.remote && state.remote[`origin/${head}`]) {
+    const localId = state.branches[head]
+    const remoteId = state.remote[`origin/${head}`]
+    const localSet = reachableFrom(state, localId)
+    const remoteSet = reachableFrom(state, remoteId)
+    const ahead = [...localSet].filter((c) => !remoteSet.has(c)).length - 1 // exclude common ancestor? keep simple count
+    const behind = [...remoteSet].filter((c) => !localSet.has(c)).length - 1
+    const parts: string[] = []
+    if (ahead > 0) parts.push(`${ahead} ahead`)
+    if (behind > 0) parts.push(`${behind} behind`)
+    if (parts.length) remoteInfo = ` \x1b[33m(${parts.join(", ")} of origin/${head})\x1b[0m`
+  }
+  return `${branchLine}${remoteInfo}${staged}`
 }
 
 function logText(state: RepoState, oneline: boolean): string {
