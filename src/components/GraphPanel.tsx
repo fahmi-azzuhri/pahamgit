@@ -16,8 +16,6 @@ export interface GraphPanelProps {
   state: RepoState
   scenarioId: string
   onSelectCommit: (id: string) => void
-  onHint: () => void
-  onShowAnswer: () => void
   canUndo: boolean
   onUndo: () => void
   onReset: () => void
@@ -27,8 +25,6 @@ export function GraphPanel({
   state,
   scenarioId,
   onSelectCommit,
-  onHint,
-  onShowAnswer,
   canUndo,
   onUndo,
   onReset,
@@ -64,10 +60,8 @@ export function GraphPanel({
         canUndo={canUndo}
         onUndo={onUndo}
         onReset={onReset}
-        onHint={onHint}
         onZoomIn={() => zoomIn({ duration: 200 })}
         onZoomOut={() => zoomOut({ duration: 200 })}
-        onShowAnswer={onShowAnswer}
       />
     </div>
   )

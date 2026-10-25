@@ -286,23 +286,6 @@ export default function App() {
     setSelected(null)
   }
 
-  const handleHint = () => {
-    const t = term.current
-    if (!t) return
-    // hints follow the checklist order: one hint per step
-    const step = Math.min(progress.done, scenario.hints.length - 1)
-    t.writeln(`\x1b[33mHint ${step + 1}/${scenario.hints.length}:\x1b[0m ${scenario.hints[step]}`)
-    t.write(PROMPT)
-  }
-
-  const handleShowAnswer = () => {
-    const t = term.current
-    if (!t) return
-    t.writeln("\x1b[33mSuggested solution:\x1b[0m")
-    for (const c of scenario.answer) t.writeln(`  \x1b[36m$ ${c}\x1b[0m`)
-    t.write(PROMPT)
-  }
-
   const handleReset = () => {
     reset()
     setSelected(null)
@@ -388,8 +371,6 @@ export default function App() {
                 state={state}
                 scenarioId={scenarioId}
                 onSelectCommit={setSelected}
-                onHint={handleHint}
-                onShowAnswer={handleShowAnswer}
                 canUndo={canUndo}
                 onUndo={undo}
                 onReset={handleReset}
@@ -422,7 +403,6 @@ export default function App() {
               ))}
             </ul>
             <HintPanel
-              hints={scenario.hints}
               checklist={checklist}
               activeStep={checklist.findIndex((c) => !c.done)}
             />
