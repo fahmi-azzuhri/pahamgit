@@ -22,7 +22,7 @@ function renderHint(text: string) {
 }
 
 export function HintPanel({ checklist, activeStep }: HintPanelProps) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const [concept, setConcept] = useState<ConceptId | null>(null)
 
   const current = Math.min(activeStep, checklist.length - 1)
