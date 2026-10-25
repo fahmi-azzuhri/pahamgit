@@ -40,7 +40,7 @@ export function HintPanel({ hints, checklist, activeStep }: HintPanelProps) {
         className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] text-slate-500 hover:bg-[#0f172a]"
       >
         <span className="flex items-center gap-1.5">
-          <span className="text-amber-400">💡</span> MODE TERPANDU
+          MODE TERPANDU
           {revealed > 0 && (
             <span className="rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 text-[10px] text-amber-300">
               {revealed} hint
