@@ -11,7 +11,7 @@ import { useGitSim } from "./hooks/useGitSim"
 import { complete } from "./sim/parser"
 import { login, logout, me, register } from "./lib/auth"
 import { HintPanel } from "./components/HintPanel"
-import { getScenario, ROADMAP_ORDER } from "./sim/scenarios"
+import { getScenario, ROADMAP_ORDER, taskLockReason } from "./sim/scenarios"
 import type { RepoState } from "./sim/types"
 
 const LazyReactFlowProvider = lazy(() => import("@xyflow/react").then(m => ({ default: m.ReactFlowProvider })))
@@ -60,6 +60,11 @@ export default function App() {
       }
     })
   }, [progressEntries])
+  const nextLockReason = useMemo(() => {
+    const idx = ROADMAP_ORDER.indexOf(scenarioId)
+    const nextId = ROADMAP_ORDER[idx + 1]
+    return nextId ? taskLockReason(nextId, completedTaskIds) : null
+  }, [scenarioId, completedTaskIds])
   const highestAchievedLevel = useMemo(() => {
     const levelRank = { Beginner: 1, Intermediate: 2, Advanced: 3 }
     return completedTaskIds.reduce<"Beginner" | "Intermediate" | "Advanced" | null>((highest, id) => {
@@ -457,7 +462,12 @@ export default function App() {
                 )
               })}
             </ul>
-            {hasNext && progress.done === progress.total && (
+            {hasNext && progress.done === progress.total && nextLockReason && (
+              <p className="mt-3 rounded-md border border-amber-400/30 bg-amber-400/5 px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">
+                🔒 Task berikutnya terkunci — {nextLockReason}
+              </p>
+            )}
+            {hasNext && progress.done === progress.total && !nextLockReason && (
               <button
                 onClick={handleNext}
                 disabled={sessionChecking || switchingTask}

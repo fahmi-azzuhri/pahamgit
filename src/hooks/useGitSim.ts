@@ -7,6 +7,7 @@ import {
   getScenario,
   orderedChecklist,
   ROADMAP_ORDER,
+  taskLockReason,
   type ChecklistState,
   type Scenario,
 } from "../sim/scenarios"
@@ -28,6 +29,24 @@ export function useGitSim(
   const scenarioId = currentIndex >= 0 ? ROADMAP_ORDER[currentIndex] : ROADMAP_ORDER[0]
   const scenario: Scenario = useMemo(() => getScenario(scenarioId), [scenarioId])
 
+  // mirror of App.tsx's completedTaskIds: needed here to enforce per-level locks
+  const completedIds = useMemo(() => {
+    return ROADMAP_ORDER.filter((id) => {
+      const task = getScenario(id)
+      const entry = serverProgress.find((item) => item.scenario_id === id)
+      if (!entry) return false
+      if (task.checklist.every((item) => entry.steps_done.includes(item.id))) return true
+      if (!entry.repo_state) return false
+      try {
+        const savedState = JSON.parse(entry.repo_state) as RepoState
+        return task.checklist.every((item) => item.done(savedState))
+      } catch (error) {
+        console.error(`Gagal membaca progres skenario "${id}":`, error)
+        return false
+      }
+    })
+  }, [serverProgress])
+
   const appliedServerPos = useRef(false)
   useEffect(() => {
     if (!progressLoaded) {
@@ -36,9 +55,14 @@ export function useGitSim(
     }
     if (appliedServerPos.current) return
     appliedServerPos.current = true
-    const idx = serverCurrentScenarioId ? ROADMAP_ORDER.indexOf(serverCurrentScenarioId) : -1
+    let idx = serverCurrentScenarioId ? ROADMAP_ORDER.indexOf(serverCurrentScenarioId) : -1
+    // per-progression lock: never restore into a locked task — clamp to the
+    // first unlocked one instead
+    while (idx > 0 && taskLockReason(ROADMAP_ORDER[idx], completedIds)) idx--
     setCurrentIndex(idx >= 0 ? idx : 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressLoaded, serverCurrentScenarioId])
+
 
   const [state, setState] = useState<RepoState>(() => scenario.build())
   const hydratedScenario = useRef<string | null>(null)
@@ -155,9 +179,14 @@ export function useGitSim(
   const next = useCallback(async () => {
     const nextIndex = Math.min(currentIndex + 1, ROADMAP_ORDER.length - 1)
     if (nextIndex === currentIndex) return
-    await onScenarioSwitch?.(ROADMAP_ORDER[nextIndex])
+    const nextId = ROADMAP_ORDER[nextIndex]
+    if (taskLockReason(nextId, completedIds)) {
+      throw new Error(`Task "${getScenario(nextId).title}" masih terkunci — selesaikan level sebelumnya dulu.`)
+    }
+    await onScenarioSwitch?.(nextId)
     setCurrentIndex(nextIndex)
-  }, [currentIndex, onScenarioSwitch])
+  }, [currentIndex, onScenarioSwitch, completedIds])
+
 
   return {
     scenario,
