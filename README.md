@@ -1,89 +1,39 @@
-# PahamGit Frontend
+# PahamGit
 
-This is the frontend for PahamGit — a fun little app for learning Git by actually *doing* it. Built with React + TypeScript + Vite, and it talks to the backend over a REST API.
+PahamGit is an interactive Git simulator for learning Git by running commands and seeing what they change. Practice in a simulated repository without affecting a real one.
 
-If you're just here to get it running:
+## Why PahamGit
+
+Git concepts like commits, branches, tags, and `HEAD` make more sense when you can try them out. PahamGit gives you a place to practice, inspect the repository history, and work through tasks one step at a time.
+
+## What you can do
+
+- Try Git commands without changing a real repository.
+- See commits and branch positions in a repository graph.
+- Follow a roadmap of tasks with step-by-step checklists.
+- Use hints or view a suggested solution when you get stuck.
+- Undo changes or reset the current task to try again.
+- Sign in to save your progress and pick up where you left off.
+
+## Features
+
+- Interactive terminal with command history and `Tab` autocomplete.
+- Practice branching, committing, merging, tagging, and recovering with reset.
+- Select commits in the graph to inspect them or check them out.
+- Track completed steps in each task's checklist.
+- View roadmap progress and your highest completed level in your profile.
+
+## Run the frontend
+
+To use sign-in and sync progress, start the PahamGit backend first. Set `VITE_API_URL` to your API URL; it defaults to `http://localhost:8080`.
 
 ```bash
 npm install
 npm run dev
 ```
 
-That's it. The rest of this file is the usual Vite template notes, kept for reference.
+To create a production build:
 
-## React + TypeScript + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build
 ```
