@@ -13,6 +13,7 @@ Git concepts like commits, branches, tags, and `HEAD` make more sense when you c
 - Follow a roadmap of tasks with step-by-step checklists.
 - Use hints or view a suggested solution when you get stuck.
 - Undo changes or reset the current task to try again.
+- Get started with a first-run welcome overlay with click-to-run example commands (`help`, `git status`, `git log --oneline`).
 - Sign in to save your progress and pick up where you left off.
 
 ## Features
