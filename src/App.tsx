@@ -86,6 +86,21 @@ export default function App() {
   const histIdxRef = useRef(0)
   const firstScenario = useRef(scenarioId)
 
+  // first-run welcome overlay: once per browser, flag in localStorage
+  const WELCOME_KEY = "pahamgit:welcome"
+  const [welcomeOpen, setWelcomeOpen] = useState(
+    () => !localStorage.getItem(WELCOME_KEY),
+  )
+  const welcomeExamples = ["help", "git status", "git log --oneline"]
+  const closeWelcome = () => {
+    localStorage.setItem(WELCOME_KEY, "1")
+    setWelcomeOpen(false)
+  }
+  const runWelcomeExample = (cmd: string) => {
+    closeWelcome()
+    execExternal(cmd)
+  }
+
   const [selected, setSelected] = useState<string | null>(null)
 
   // ponytail: client-side gate backed by real API sessions; progress itself stays local
@@ -605,6 +620,45 @@ export default function App() {
               className="mt-4 w-full rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-300 hover:bg-[#1e293b]"
             >
               Tutup
+            </button>
+          </div>
+        </div>
+      )}
+      {welcomeOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4"
+          onClick={closeWelcome}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-5 shadow-xl"
+          >
+            <h2 className="text-sm font-semibold text-slate-100">
+              Selamat datang di PahamGit
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-slate-400">
+              Ini simulator git. Semua perintah diketik langsung di terminal di
+              sebelah kanan. Mulai dengan:
+            </p>
+            <div className="mt-3 space-y-1.5">
+              {welcomeExamples.map((cmd) => (
+                <button
+                  key={cmd}
+                  type="button"
+                  onClick={() => runWelcomeExample(cmd)}
+                  className="block w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-left font-mono text-xs text-cyan-300 hover:border-emerald-400/50 hover:bg-[#1e293b]"
+                >
+                  <span className="text-slate-500">$ </span>
+                  {cmd}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={closeWelcome}
+              className="mt-4 w-full rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-300 hover:bg-[#1e293b]"
+            >
+              Mulai sendiri
             </button>
           </div>
         </div>
