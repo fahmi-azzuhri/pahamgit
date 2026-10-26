@@ -24,7 +24,7 @@ Git concepts like commits, branches, tags, and `HEAD` make more sense when you c
 - Track completed steps in each task's checklist.
 - View roadmap progress and your highest completed level in your profile.
 
-## Run the frontend
+## Run
 
 To use sign-in and sync progress, start the PahamGit backend first. Set `VITE_API_URL` to your API URL; it defaults to `http://localhost:8080`.
 
