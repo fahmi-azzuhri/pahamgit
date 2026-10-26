@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   Background,
   BackgroundVariant,
@@ -31,6 +31,20 @@ export function GraphPanel({
 }: GraphPanelProps) {
   const { nodes, edges } = useMemo(() => buildGraph(state), [state])
   const { fitView, zoomIn, zoomOut } = useReactFlow()
+  // React Flow needs a measured parent (width + height) before it renders.
+  // Render only once the container reports a real size, or it logs error #004.
+  const paneRef = useRef<HTMLDivElement>(null)
+  const [paneReady, setPaneReady] = useState(false)
+
+  useEffect(() => {
+    const el = paneRef.current
+    if (!el) return
+    const check = () => setPaneReady(el.clientWidth > 0 && el.clientHeight > 0)
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => fitView({ padding: 0.25, duration: 400 }), 80)
@@ -39,8 +53,9 @@ export function GraphPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="dot-grid min-h-0 flex-1">
-        <ReactFlow
+      <div ref={paneRef} className="dot-grid min-h-0 flex-1">
+        {paneReady && (
+          <ReactFlow
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
@@ -54,7 +69,8 @@ export function GraphPanel({
           elementsSelectable
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
-        </ReactFlow>
+          </ReactFlow>
+        )}
       </div>
       <BottomToolbar
         canUndo={canUndo}

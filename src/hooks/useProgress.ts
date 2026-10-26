@@ -51,6 +51,9 @@ export function useProgress(token: string) {
       if (repoState !== undefined) {
         setRepoStates((prev) => ({ ...prev, [scenarioId]: repoState ?? "" }))
       }
+      // guests have no token: a request would always come back 401, so keep
+      // progress local-only until they sign in
+      if (!token) return
       void saveProgress(token, scenarioId, stepsDone, completed, repoState).catch((error: unknown) => {
         console.error("Gagal menyimpan progres:", error)
       })
