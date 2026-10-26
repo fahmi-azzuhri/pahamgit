@@ -368,12 +368,16 @@ function statusText(state: RepoState): string {
     const remoteId = state.remote[`origin/${head}`]
     const localSet = reachableFrom(state, localId)
     const remoteSet = reachableFrom(state, remoteId)
-    const ahead = [...localSet].filter((c) => !remoteSet.has(c)).length - 1 // exclude common ancestor? keep simple count
-    const behind = [...remoteSet].filter((c) => !localSet.has(c)).length - 1
-    const parts: string[] = []
-    if (ahead > 0) parts.push(`${ahead} ahead`)
-    if (behind > 0) parts.push(`${behind} behind`)
-    if (parts.length) remoteInfo = ` \x1b[33m(${parts.join(", ")} of origin/${head})\x1b[0m`
+    // sets already include the starting commit, so diff size is the true count
+    const ahead = [...localSet].filter((c) => !remoteSet.has(c)).length
+    const behind = [...remoteSet].filter((c) => !localSet.has(c)).length
+    if (ahead > 0 && behind > 0) {
+      remoteInfo = `\n\x1b[33mYour branch and 'origin/${head}' have diverged,\nand have ${ahead} and ${behind} different commits each, respectively.\nRun 'git pull' to integrate the remote changes.\x1b[0m`
+    } else if (ahead > 0) {
+      remoteInfo = `\n\x1b[33mYour branch is ahead of 'origin/${head}' by ${ahead} commit${ahead === 1 ? "" : "s"}.\n  (use "git push" to publish your local commits)\x1b[0m`
+    } else if (behind > 0) {
+      remoteInfo = `\n\x1b[33mYour branch is behind 'origin/${head}' by ${behind} commit${behind === 1 ? "" : "s"}, and can be fast-forwarded.\n  (use "git pull" to update your local branch)\x1b[0m`
+    }
   }
   return `${branchLine}${remoteInfo}${staged}`
 }
