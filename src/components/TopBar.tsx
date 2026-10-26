@@ -18,9 +18,7 @@ export function TopBar({ scenarioId, title, done, total, authed, username, onAut
   return (
     <header className="flex items-center gap-4 border-b border-[#1e293b] bg-[#0b1220] px-4 py-2.5">
       <div className="flex shrink-0 items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-cyan-400 to-purple-500 text-sm font-bold text-slate-950">
-          P
-        </div>
+        <img src="/pahamgit.png" alt="PahamGit" className="h-7 w-7 rounded-md" />
         <span className="text-sm font-semibold tracking-wide text-slate-100">
           PahamGit
         </span>

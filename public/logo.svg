@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <!-- isometric cube -->
+  <path d="M256 48 452 156v200L256 464 60 356V156L256 48Z"
+        fill="#263238" stroke="#263238" stroke-width="0"/>
+  <!-- inner white faces -->
+  <path d="M256 78 424 172v168L256 434 88 340V172L256 78Z" fill="#ffffff"/>
+  <!-- dark right face -->
+  <path d="M424 172v168L256 434V266L424 172Z" fill="#263238"/>
+  <!-- $ symbol on dark face -->
+  <g transform="translate(232 268) scale(3.1)">
+    <text x="0" y="26" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="bold" fill="#ffffff">$</text>
+  </g>
+  <!-- P with git-node style, green stem and orange curve -->
+  <g transform="translate(296 218) scale(2.6)">
+    <circle cx="10" cy="0" r="5" fill="none" stroke="#34a853" stroke-width="3"/>
+    <circle cx="10" cy="44" r="5" fill="none" stroke="#34a853" stroke-width="3"/>
+    <line x1="10" y1="5" x2="10" y2="39" stroke="#34a853" stroke-width="3"/>
+    <path d="M14 2 C 28 -2 34 6 30 14 C 27 20 18 22 12 20"
+          fill="none" stroke="#f9a825" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="31" cy="15" r="4.5" fill="none" stroke="#f9a825" stroke-width="3"/>
+  </g>
+</svg>
