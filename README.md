@@ -44,8 +44,8 @@ npm run build
 PahamGit is free for personal study, education, and noncommercial use. If you find it helpful and want to support the development, you can leave a voluntary tip via Saweria — every bit of support is appreciated and is never required to use or distribute this project.
 
 <div align="center">
-
-<img src="https://saweria.co/widgets/qr?streamKey=eaf0065f59e5018dd8b6b241f711ff9f" alt="Saweria QR code" width="200" />
+  
+<img width="290" height="290" alt="download" src="https://github.com/user-attachments/assets/841b8ca4-b630-4ee4-a043-6631ffca2284" />
 
 **[Support on Saweria](https://saweria.co/widgets/qr?streamKey=eaf0065f59e5018dd8b6b241f711ff9f)**
 
