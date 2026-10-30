@@ -179,6 +179,8 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
   const [taskSwitchError, setTaskSwitchError] = useState("");
   const [switchingTask, setSwitchingTask] = useState(false);
+  // set only when the "next" button sends a guest into the auth modal
+  const pendingNext = useRef(false);
 
   // drop stale sessions on load instead of trusting localStorage blindly
   useEffect(() => {
@@ -384,6 +386,7 @@ export default function App() {
   const handleNext = async () => {
     if (sessionChecking || switchingTask) return;
     if (!authed) {
+      pendingNext.current = true;
       setAuthMode("login");
       setAuthError("");
       setLoginOpen(true);
@@ -420,7 +423,11 @@ export default function App() {
       setIdentifier("");
       setEmail("");
       setPassword("");
-      next();
+      // signing in must not move the roadmap: only an explicit "next" click does
+      if (pendingNext.current) {
+        pendingNext.current = false;
+        await next().catch(() => setTaskSwitchError(t.saveFailed));
+      }
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : t.loginFailed);
     } finally {
@@ -429,6 +436,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    pendingNext.current = false;
     const stored = localStorage.getItem("pahamgit:token");
     localStorage.removeItem("pahamgit:token");
     localStorage.removeItem("pahamgit:username");
@@ -655,6 +663,7 @@ export default function App() {
                 type="button"
                 disabled={authBusy}
                 onClick={() => {
+                  pendingNext.current = false;
                   setLoginOpen(false);
                   setPassword("");
                   setAuthError("");

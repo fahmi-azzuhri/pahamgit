@@ -56,10 +56,15 @@ export function useGitSim(
     if (appliedServerPos.current) return
     appliedServerPos.current = true
     let idx = serverCurrentScenarioId ? ROADMAP_ORDER.indexOf(serverCurrentScenarioId) : -1
+    if (idx < 0) idx = 0
+    // a stored position past an unfinished task means the position is stale:
+    // "next" is gated on finishing, so resume at the first task still open
+    const firstOpen = ROADMAP_ORDER.findIndex((id) => !completedIds.includes(id))
+    if (firstOpen >= 0) idx = Math.min(idx, firstOpen)
     // per-progression lock: never restore into a locked task — clamp to the
     // first unlocked one instead
     while (idx > 0 && taskLockReason(ROADMAP_ORDER[idx], completedIds)) idx--
-    setCurrentIndex(idx >= 0 ? idx : 0)
+    setCurrentIndex(idx)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressLoaded, serverCurrentScenarioId])
 
