@@ -73,6 +73,26 @@ export default function App() {
       return !highest || levelRank[level] > levelRank[highest] ? level : highest
     }, null)
   }, [completedTaskIds])
+  // ponytail: typewriter title in the tab; pause when hidden, skip for reduced-motion users
+  useEffect(() => {
+    const full = `PahamGit — ${t.tagline}`
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.title = full
+      return
+    }
+    let i = 0
+    const id = window.setInterval(() => {
+      if (document.hidden) return
+      i = (i + 1) % (full.length + 6)
+      document.title = full.slice(0, Math.min(i, full.length)) || "PahamGit"
+    }, 180)
+    return () => {
+      window.clearInterval(id)
+      document.title = "PahamGit"
+    }
+  }, [t.tagline])
+
+
 
   const termRef = useRef<HTMLDivElement>(null)
   const term = useRef<InstanceType<typeof import("@xterm/xterm").Terminal> | null>(null)
