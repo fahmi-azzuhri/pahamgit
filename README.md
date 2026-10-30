@@ -14,6 +14,7 @@ Git concepts like commits, branches, tags, and `HEAD` make more sense when you c
 - Use hints or view a suggested solution when you get stuck.
 - Undo changes or reset the current task to try again.
 - Get started with a first-run welcome overlay with click-to-run example commands (`help`, `git status`, `git log --oneline`).
+- Switch the interface between Indonesian and English at any time.
 - Sign in to save your progress and pick up where you left off.
 
 ## Features
@@ -23,6 +24,7 @@ Git concepts like commits, branches, tags, and `HEAD` make more sense when you c
 - Select commits in the graph to inspect them or check them out.
 - Track completed steps in each task's checklist.
 - View roadmap progress and your highest completed level in your profile.
+- Language toggle (`ID` / `EN`) in the top bar; task titles, checklist steps, interface text, and the terminal intro follow the selected language, and the choice is kept across reloads.
 
 ## Run
 
