@@ -114,6 +114,17 @@ export function useGitSim(
     setAchieved({ scenarioId: scenario.id, ids: new Set() })
   }, [scenario])
 
+  // back to the first task with a fresh repo (used on logout)
+  const restart = useCallback(() => {
+    const first = getScenario(ROADMAP_ORDER[0])
+    appliedServerPos.current = false
+    hydratedScenario.current = first.id
+    setCurrentIndex(0)
+    setState(first.build())
+    setHistory([])
+    setAchieved({ scenarioId: first.id, ids: new Set() })
+  }, [])
+
   const checklist: ChecklistState[] = useMemo(() => {
     const kept = achieved.scenarioId === scenario.id ? achieved.ids : new Set<string>()
     return orderedChecklist(scenario, state, kept)
@@ -205,5 +216,7 @@ export function useGitSim(
     progress,
     hasNext,
     next,
+    restart,
+
   }
 }

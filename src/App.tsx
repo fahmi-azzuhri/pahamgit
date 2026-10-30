@@ -67,6 +67,7 @@ export default function App() {
     progress,
     hasNext,
     next,
+    restart,
   } = useGitSim(
     progressEntries,
     upsert,
@@ -335,15 +336,10 @@ export default function App() {
     };
   }, []);
 
-  // on scenario (roadmap) change, print intro without clearing previous output
-  useEffect(() => {
-    if (firstScenario.current === scenarioId) {
-      return;
-    }
-    firstScenario.current = scenarioId;
+  // fresh terminal: intro + prompt, no leftover history from the previous task
+  const resetTerminal = useCallback(() => {
     const xterm = term.current;
     if (!xterm) return;
-    // clear old session, keep the intro visible after reset
     xterm.clear();
     xterm.writeln(dict[lang].intro);
     xterm.writeln(dict[lang].controls + "\n");
@@ -351,7 +347,16 @@ export default function App() {
     inputRef.current = "";
     historyRef.current = [];
     histIdxRef.current = 0;
-  }, [scenarioId, lang]);
+  }, [lang]);
+
+  // on scenario (roadmap) change, print intro without clearing previous output
+  useEffect(() => {
+    if (firstScenario.current === scenarioId) {
+      return;
+    }
+    firstScenario.current = scenarioId;
+    resetTerminal();
+  }, [scenarioId, lang, resetTerminal]);
 
   // reset transient UI when scenario changes
   useEffect(() => {
@@ -442,6 +447,10 @@ export default function App() {
     localStorage.removeItem("pahamgit:username");
     setAuthed(false);
     setAccount("");
+    setProfileOpen(false);
+    setSelected(null);
+    restart();
+    resetTerminal();
     if (stored) void logout(stored);
   };
 

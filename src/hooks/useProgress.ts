@@ -10,7 +10,14 @@ export function useProgress(token: string) {
 
   // Reload progress when the authenticated account changes.
   useEffect(() => {
-    if (!token) return
+    if (!token) {
+      // logout must not leave the previous account's progress on screen
+      setEntries([])
+      setRepoStates({})
+      setCurrentScenarioId(null)
+      setLoadedToken(null)
+      return
+    }
     let active = true
     fetchProgress(token)
       .then((data) => {
