@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { ChecklistState } from "../sim/scenarios"
 import { CONCEPTS, type ConceptId } from "../sim/concepts"
+import { useLang } from "../lib/lang"
 
 interface HintPanelProps {
   checklist: ChecklistState[]
@@ -22,6 +23,7 @@ function renderHint(text: string) {
 }
 
 export function HintPanel({ checklist, activeStep }: HintPanelProps) {
+  const { t } = useLang()
   const [open, setOpen] = useState(false)
   const [concept, setConcept] = useState<ConceptId | null>(null)
 
@@ -34,7 +36,7 @@ export function HintPanel({ checklist, activeStep }: HintPanelProps) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] text-slate-500 hover:bg-[#0f172a]"
       >
-        <span className="flex items-center gap-1.5">PAHAMI KONSEP</span>
+        <span className="flex items-center gap-1.5">{t.understand}</span>
         <span>{open ? "▾" : "▸"}</span>
       </button>
       {open && (
@@ -42,14 +44,14 @@ export function HintPanel({ checklist, activeStep }: HintPanelProps) {
           {activeItem && !activeItem.done && (
             <div className="rounded-md border border-[#1e293b] bg-[#0f172a] p-2">
               <p className="mb-1 text-[10px] font-semibold tracking-wide text-slate-500">
-                LANGKAH AKTIF · {current + 1}/{checklist.length}
+                {t.activeStep} · {current + 1}/{checklist.length}
               </p>
               <p className="text-slate-200">{activeItem.label}</p>
             </div>
           )}
           {activeItem && activeItem.done && (
             <p className="rounded-md border border-emerald-400/30 bg-emerald-400/10 p-2 text-emerald-300">
-              ✓ Langkah selesai — lanjut ke langkah berikutnya.
+              {t.stepDone}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">

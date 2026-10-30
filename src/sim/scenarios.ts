@@ -1,5 +1,6 @@
 ﻿import type { RepoState } from "./types"
 import { initialRepo, isAncestor } from "./gitEngine"
+import { currentLang, lockReason, scenarioCopy, type Lang } from "../lib/i18n"
 
 export interface ChecklistItem {
   id: string
@@ -1375,7 +1376,11 @@ export const LEVEL_RANK = { Beginner: 0, Intermediate: 1, Advanced: 2 } as const
  * difficulty level is completed. Returns null when unlocked, otherwise a
  * user-facing reason (Indonesian).
  */
-export function taskLockReason(scenarioId: string, completedIds: Iterable<string>): string | null {
+export function taskLockReason(
+  scenarioId: string,
+  completedIds: Iterable<string>,
+  lang: Lang = currentLang(),
+): string | null {
   const completed = new Set(completedIds)
   const rank = LEVEL_RANK[getScenario(scenarioId).difficulty]
   if (rank === 0) return null
@@ -1384,10 +1389,11 @@ export function taskLockReason(scenarioId: string, completedIds: Iterable<string
   )!
   const missing = SCENARIOS.filter((s) => s.difficulty === prevLevel && !completed.has(s.id))
   if (missing.length === 0) return null
-  return `Selesaikan semua task ${prevLevel} dulu (sisa ${missing.length}: ${missing
+  const names = missing
     .slice(0, 3)
-    .map((s) => `"${s.title}"`)
-    .join(", ")}${missing.length > 3 ? ", ..." : ""}).`
+    .map((s) => `"${scenarioCopy(s.id, lang)?.title ?? s.title}"`)
+    .join(", ")
+  return lockReason(prevLevel, missing.length, `${names}${missing.length > 3 ? ", ..." : ""}`, lang)
 }
 
 export interface ChecklistState {

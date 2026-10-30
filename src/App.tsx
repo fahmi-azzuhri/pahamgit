@@ -12,6 +12,8 @@ import { complete } from "./sim/parser"
 import { login, logout, me, register } from "./lib/auth"
 import { HintPanel } from "./components/HintPanel"
 import { getScenario, ROADMAP_ORDER, taskLockReason } from "./sim/scenarios"
+import { useLang } from "./lib/lang"
+import { currentLang, dict, levelLabel, scenarioCopy, scenarioLabel } from "./lib/i18n"
 import type { RepoState } from "./sim/types"
 
 const LazyReactFlowProvider = lazy(() => import("@xyflow/react").then(m => ({ default: m.ReactFlowProvider })))
@@ -21,10 +23,9 @@ const loadXterm = () =>
   >
 
 const PROMPT = "\x1b[32muser@git-sim\x1b[0m:\x1b[36m~\x1b[0m$ "
-const INTRO = "\x1b[33mPahamGit simulator\x1b[0m — ketik \x1b[36mhelp\x1b[0m untuk daftar perintah."
-const CONTROLS = "Tab = autocomplete · ↑/↓ = riwayat · Ctrl+C = batal"
 
 export default function App() {
+  const { lang, t } = useLang()
   const token = () => localStorage.getItem("pahamgit:token") ?? ""
   const { entries: progressEntries, upsert, loaded: progressLoaded, currentScenarioId } = useProgress(token())
   const onScenarioSwitch = useCallback(
@@ -63,8 +64,8 @@ export default function App() {
   const nextLockReason = useMemo(() => {
     const idx = ROADMAP_ORDER.indexOf(scenarioId)
     const nextId = ROADMAP_ORDER[idx + 1]
-    return nextId ? taskLockReason(nextId, completedTaskIds) : null
-  }, [scenarioId, completedTaskIds])
+    return nextId ? taskLockReason(nextId, completedTaskIds, lang) : null
+  }, [scenarioId, completedTaskIds, lang])
   const highestAchievedLevel = useMemo(() => {
     const levelRank = { Beginner: 1, Intermediate: 2, Advanced: 3 }
     return completedTaskIds.reduce<"Beginner" | "Intermediate" | "Advanced" | null>((highest, id) => {
@@ -178,8 +179,8 @@ export default function App() {
         inputRef.current = value
       }
 
-      x.writeln(INTRO)
-      x.writeln(CONTROLS + "\n")
+      x.writeln(dict[currentLang()].intro)
+      x.writeln(dict[currentLang()].controls + "\n")
       prompt()
 
       const onData = (data: string) => {
@@ -269,17 +270,17 @@ export default function App() {
       return
     }
     firstScenario.current = scenarioId
-    const t = term.current
-    if (!t) return
+    const xterm = term.current
+    if (!xterm) return
     // clear old session, keep the intro visible after reset
-    t.clear()
-    t.writeln(INTRO)
-    t.writeln(CONTROLS + "\n")
-    t.write(PROMPT)
+    xterm.clear()
+    xterm.writeln(dict[lang].intro)
+    xterm.writeln(dict[lang].controls + "\n")
+    xterm.write(PROMPT)
     inputRef.current = ""
     historyRef.current = []
     histIdxRef.current = 0
-  }, [scenarioId])
+  }, [scenarioId, lang])
 
   // reset transient UI when scenario changes
   useEffect(() => {
@@ -287,12 +288,12 @@ export default function App() {
   }, [scenarioId])
 
   const execExternal = (cmd: string) => {
-    const t = term.current
-    if (!t) return
-    t.writeln(`${PROMPT}${cmd}`)
+    const xterm = term.current
+    if (!xterm) return
+    xterm.writeln(`${PROMPT}${cmd}`)
     const res = run(cmd)
-    if (res.output) t.writeln(res.ok ? res.output : `\x1b[31m${res.output.split("\n")[0]}\x1b[0m${res.output.includes("\n") ? "\n\x1b[36m" + res.output.split("\n").slice(1).join("\n") + "\x1b[0m" : ""}`)
-    t.write(PROMPT)
+    if (res.output) xterm.writeln(res.ok ? res.output : `\x1b[31m${res.output.split("\n")[0]}\x1b[0m${res.output.includes("\n") ? "\n\x1b[36m" + res.output.split("\n").slice(1).join("\n") + "\x1b[0m" : ""}`)
+    xterm.write(PROMPT)
     inputRef.current = ""
   }
 
@@ -320,7 +321,7 @@ export default function App() {
       await next()
     } catch (error) {
       console.error("Gagal menyimpan posisi task:", error)
-      setTaskSwitchError("Posisi task gagal disimpan. Coba lagi.")
+      setTaskSwitchError(t.saveFailed)
     } finally {
       setSwitchingTask(false)
     }
@@ -347,7 +348,7 @@ export default function App() {
       setPassword("")
       next()
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "Gagal masuk")
+      setAuthError(err instanceof Error ? err.message : t.loginFailed)
     } finally {
       setAuthBusy(false)
     }
@@ -362,6 +363,14 @@ export default function App() {
     if (stored) void logout(stored)
   }
 
+  const copy = useMemo(() => scenarioCopy(scenarioId, lang), [scenarioId, lang])
+  const title = copy?.title ?? scenario.title
+  const instructions = copy?.instructions ?? scenario.instructions
+  const steps = useMemo(
+    () => checklist.map((c) => ({ ...c, label: scenarioLabel(scenarioId, c.id, c.label, lang) })),
+    [checklist, scenarioId, lang],
+  )
+
   const branchLabel =
     state.head.type === "branch" ? state.head.name : `detached @ ${state.head.commit}`
 
@@ -369,7 +378,7 @@ export default function App() {
     <div className="flex h-screen flex-col">
       <TopBar
         scenarioId={scenarioId}
-        title={scenario.title}
+        title={title}
         done={progress.done}
         total={progress.total}
         authed={authed}
@@ -406,30 +415,30 @@ export default function App() {
           <div className="border-b border-[#1e293b] p-3">
             <div className="mb-1 flex items-center justify-between">
               <h3 className="text-xs font-semibold tracking-wide text-slate-200">
-                TASK · LANGKAH {Math.min(progress.done + 1, progress.total)}/{progress.total}
+                {t.stepHeader} {Math.min(progress.done + 1, progress.total)}/{progress.total}
               </h3>
               <span className="rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">
-                {scenario.difficulty}
+                {levelLabel(scenario.difficulty, lang)}
               </span>
             </div>
             <ul className="mb-3 space-y-1 text-xs leading-relaxed text-slate-400">
-              {scenario.instructions.map((line, i) => (
+              {instructions.map((line, i) => (
                 <li key={i}>{line}</li>
               ))}
             </ul>
             <HintPanel
-              checklist={checklist}
-              activeStep={checklist.findIndex((c) => !c.done)}
+              checklist={steps}
+              activeStep={steps.findIndex((c) => !c.done)}
             />
             <ul className="space-y-1 text-xs">
-              {checklist.map((c, i) => {
-                const active = checklist.findIndex((x) => !x.done)
+              {steps.map((c, i) => {
+                const active = steps.findIndex((x) => !x.done)
                 const locked = !c.done && i > active
                 return (
                   <li
                     key={c.id}
                     className={"flex items-start gap-2" + (locked ? " opacity-40" : "")}
-                    title={locked ? "Selesaikan langkah sebelumnya dulu" : undefined}
+                    title={locked ? t.stepLocked : undefined}
                   >
                     <span
                       className={
@@ -459,7 +468,7 @@ export default function App() {
             </ul>
             {hasNext && progress.done === progress.total && nextLockReason && (
               <p className="mt-3 rounded-md border border-amber-400/30 bg-amber-400/5 px-2 py-1.5 text-[11px] leading-relaxed text-amber-300">
-                🔒 Task berikutnya terkunci — {nextLockReason}
+                🔒 {t.taskLocked} — {nextLockReason}
               </p>
             )}
             {hasNext && progress.done === progress.total && !nextLockReason && (
@@ -469,22 +478,22 @@ export default function App() {
                 className="mt-3 w-full rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {sessionChecking
-                  ? "Memeriksa sesi..."
+                  ? t.checkingSession
                   : switchingTask
-                    ? "Menyimpan posisi..."
+                    ? t.savingPos
                   : authed
-                    ? "Lanjut ke task berikutnya →"
-                    : "Login & lanjut ke task berikutnya →"}
+                    ? t.nextTask
+                    : t.loginNext}
               </button>
             )}
             {taskSwitchError && <p className="mt-2 text-xs text-rose-400">{taskSwitchError}</p>}
             {!hasNext && progress.done === progress.total && (
-              <p className="mt-3 text-xs text-emerald-300">✓ Roadmap selesai</p>
+              <p className="mt-3 text-xs text-emerald-300">{t.roadmapDone}</p>
             )}
           </div>
 
           <div className="flex items-center justify-between border-b border-[#1e293b] px-3 py-1.5 text-[11px] text-slate-500">
-            <span>TERMINAL</span>
+            <span>{t.terminalLabel}</span>
             <span className="font-mono text-slate-400">
               <span className="text-emerald-400">●</span> {branchLabel}
             </span>
@@ -500,17 +509,17 @@ export default function App() {
             className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-4 shadow-xl"
           >
             <h2 className="text-sm font-semibold text-slate-100">
-              {authMode === "login" ? "Masuk untuk lanjut" : "Daftar untuk lanjut"}
+              {authMode === "login" ? t.authTitleLogin : t.authTitleRegister}
             </h2>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">
-              {authMode === "login" ? "Masuk" : "Daftar"} supaya progres kamu tersimpan dan tidak hilang.
+              {authMode === "login" ? t.enter : t.signUp} {t.authLead}
             </p>
             {authMode === "register" && (
               <input
                 autoFocus
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username"
+                placeholder={t.username}
                 autoComplete="username"
                 className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
               />
@@ -521,7 +530,7 @@ export default function App() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder={t.email}
                 autoComplete="email"
                 className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
               />
@@ -533,7 +542,7 @@ export default function App() {
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="Email atau username"
+                placeholder={t.identifier}
                 autoComplete="username"
                 className="mt-3 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
               />
@@ -544,7 +553,7 @@ export default function App() {
               minLength={authMode === "register" ? 8 : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={authMode === "register" ? "Password (min. 8 karakter)" : "Password"}
+              placeholder={authMode === "register" ? t.passwordMin : t.password}
               autoComplete={authMode === "register" ? "new-password" : "current-password"}
               className="mt-2 w-full rounded-md border border-[#334155] bg-[#0f172a] px-3 py-2 text-xs text-slate-200 outline-none focus:border-cyan-400"
             />
@@ -560,7 +569,7 @@ export default function App() {
                 }}
                 className="flex-1 rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-400 hover:bg-[#1e293b] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Batal
+                {t.cancel}
               </button>
               <button
                 type="submit"
@@ -572,7 +581,7 @@ export default function App() {
                 }
                 className="flex-1 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {authBusy ? "Memproses..." : authMode === "login" ? "Masuk" : "Daftar"}
+                {authBusy ? t.processing : authMode === "login" ? t.enter : t.signUp}
               </button>
             </div>
             <button
@@ -584,7 +593,7 @@ export default function App() {
               }}
               className="mt-3 w-full text-center text-[11px] text-slate-400 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {authMode === "login" ? "Belum punya akun? Daftar" : "Sudah punya akun? Masuk"}
+              {authMode === "login" ? t.noAccount : t.hasAccount}
             </button>
           </form>
         </div>
@@ -598,20 +607,22 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-4 shadow-xl"
           >
-            <h2 className="text-sm font-semibold text-slate-100">Profile</h2>
-            <p className="mt-1 text-xs leading-relaxed text-slate-400">Data akun kamu.</p>
+            <h2 className="text-sm font-semibold text-slate-100">{t.profileTitle}</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t.profileLead}</p>
             <dl className="mt-3 space-y-2 font-mono text-xs">
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">username</dt>
                 <dd className="truncate text-cyan-300">{account}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">progres</dt>
-                <dd className="text-slate-300">{completedTaskIds.length}/{ROADMAP_ORDER.length} task</dd>
+                <dt className="text-slate-500">{t.progressLabel}</dt>
+                <dd className="text-slate-300">{completedTaskIds.length}/{ROADMAP_ORDER.length} {t.task}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">level terakhir</dt>
-                <dd className="text-slate-300">{highestAchievedLevel ?? "Belum ada"}</dd>
+                <dt className="text-slate-500">{t.lastLevel}</dt>
+                <dd className="text-slate-300">
+                  {highestAchievedLevel ? levelLabel(highestAchievedLevel, lang) : t.noLevel}
+                </dd>
               </div>
             </dl>
             <button
@@ -619,7 +630,7 @@ export default function App() {
               onClick={() => setProfileOpen(false)}
               className="mt-4 w-full rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-300 hover:bg-[#1e293b]"
             >
-              Tutup
+              {t.close}
             </button>
           </div>
         </div>
@@ -634,11 +645,10 @@ export default function App() {
             className="w-full max-w-sm rounded-lg border border-[#1e293b] bg-[#0b1220] p-5 shadow-xl"
           >
             <h2 className="text-sm font-semibold text-slate-100">
-              Selamat datang di PahamGit
+              {t.welcomeTitle}
             </h2>
             <p className="mt-2 text-xs leading-relaxed text-slate-400">
-              Ini simulator git. Semua perintah diketik langsung di terminal di
-              sebelah kanan. Mulai dengan:
+              {t.welcomeBody}
             </p>
             <div className="mt-3 space-y-1.5">
               {welcomeExamples.map((cmd) => (
@@ -658,7 +668,7 @@ export default function App() {
               onClick={closeWelcome}
               className="mt-4 w-full rounded-md border border-[#334155] px-3 py-1.5 text-xs text-slate-300 hover:bg-[#1e293b]"
             >
-              Mulai sendiri
+              {t.startAlone}
             </button>
           </div>
         </div>

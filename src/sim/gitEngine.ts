@@ -5,6 +5,7 @@ import type {
   ParsedCommand,
   RepoState,
 } from "./types"
+import { helpText } from "../lib/i18n"
 
 const AUTHOR = "you <you@pahamgit.dev>"
 
@@ -449,23 +450,7 @@ export function refsFor(
 }
 
 function helpLines(): string {
-  return `Supported commands:
-  git status                  repo state
-  git log [--oneline]         commit history
-  git branch <name> [start]   list / create branch
-  git checkout [-b] <ref>     switch / create
-  git switch [-c] <branch>    switch / create
-  git commit -m "msg"         record a commit
-  git merge <branch>          merge (--no-ff optional)
-  git reset [--hard] [id]     move branch back
-  git revert [id]             undo a commit with a new commit
-  git rebase <branch>         replay commits on top of another branch
-  git stash [pop|list]        save / restore working changes
-  git push [origin <branch>]  publish branch to remote (simulated)
-  git pull [origin <branch>]  fetch from remote (simulated)
-  git tag <name> [id]         create a tag
-  clear                       clear the terminal
-  help                        show this help`
+  return helpText()
 }
 
 export function initialRepo(): RepoState {
