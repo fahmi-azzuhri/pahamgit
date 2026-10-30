@@ -734,12 +734,6 @@ export default function App() {
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-slate-500">{t.doneLabel}</dt>
-                <dd className="text-slate-300">
-                  {completedTaskIds.length}/{ROADMAP_ORDER.length} {t.task}
-                </dd>
-              </div>
-              <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">{t.lastLevel}</dt>
                 <dd className="text-slate-300">
                   {highestAchievedLevel
