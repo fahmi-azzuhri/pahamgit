@@ -43,8 +43,8 @@ npm run build
 
 ## Support the Creator 🧡
 
-PahamGit is free for personal study, education, and noncommercial use. If you find it helpful and want to support the development, you can leave a voluntary tip via Qris, every bit of support is appreciated and is never required to use or distribute this project.
+PahamGit is free for personal study, education, and noncommercial use. If you find it helpful and want to support the development, you can leave a voluntary tip via Saweria, every bit of support is appreciated and is never required to use or distribute this project.
 
 <div align="center">
-<img width="400" height="800" alt="1793027994033" src="https://github.com/user-attachments/assets/9c30e0ab-32f0-4bbb-a3bd-3e29521936c5" />
+  <img width="290" height="290" alt="download" src="https://github.com/user-attachments/assets/64ea0371-4b26-4ead-8d02-b5b8a4bc6e9a" />
 </div>
