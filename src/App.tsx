@@ -7,7 +7,7 @@ import {
   type FormEvent,
 } from "react";
 import { useProgress } from "./hooks/useProgress";
-import { setCurrentScenario } from "./lib/progress";
+import { saveProgress, setCurrentScenario } from "./lib/progress";
 import "@xterm/xterm/css/xterm.css";
 import { lazy, Suspense } from "react";
 
@@ -50,6 +50,7 @@ export default function App() {
     upsert,
     loaded: progressLoaded,
     currentScenarioId,
+    error: progressError,
   } = useProgress(token());
   const onScenarioSwitch = useCallback(
     (sid: string) => setCurrentScenario(token(), sid),
@@ -182,6 +183,15 @@ export default function App() {
   const [switchingTask, setSwitchingTask] = useState(false);
   // set only when the "next" button sends a guest into the auth modal
   const pendingNext = useRef(false);
+
+  // fresh account: no saved position yet, so pin the active task to create the row
+  useEffect(() => {
+    if (!authed || !progressLoaded || currentScenarioId) return;
+    void setCurrentScenario(token(), scenarioId).catch((error: unknown) => {
+      console.error("Gagal menyimpan posisi task:", error);
+      setTaskSwitchError(t.saveFailed);
+    });
+  }, [authed, progressLoaded, currentScenarioId, scenarioId, t.saveFailed]);
 
   // drop stale sessions on load instead of trusting localStorage blindly
   useEffect(() => {
@@ -418,6 +428,23 @@ export default function App() {
         authMode === "register"
           ? await register(username.trim(), email.trim(), password)
           : await login(identifier.trim(), password);
+      // guest work must reach the server before its snapshot loads and replaces it
+      const stepsDone = checklist.filter((c) => c.done).map((c) => c.id);
+      const completed = checklist.length > 0 && stepsDone.length === checklist.length;
+      if (stepsDone.length > 0) {
+        await saveProgress(
+          res.token,
+          scenario.id,
+          stepsDone,
+          completed,
+          JSON.stringify(state),
+        ).catch((error: unknown) => {
+          console.error("Gagal mengunggah progres lokal:", error);
+        });
+      }
+      await setCurrentScenario(res.token, scenario.id).catch((error: unknown) => {
+        console.error("Gagal menyimpan posisi task:", error);
+      });
       localStorage.setItem("pahamgit:token", res.token);
       localStorage.setItem("pahamgit:username", res.user.username);
       setAccount(res.user.username);
@@ -487,6 +514,11 @@ export default function App() {
         onLogout={handleLogout}
         onProfileClick={() => setProfileOpen(true)}
       />
+      {authed && progressError && (
+        <p className="border-b border-rose-400/30 bg-rose-400/10 px-3 py-1.5 text-[11px] text-rose-300">
+          {t.syncOffline}
+        </p>
+      )}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="relative min-w-0 flex-1 border-r border-[#1e293b]">
           <Suspense fallback={null}>

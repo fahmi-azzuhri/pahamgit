@@ -16,6 +16,11 @@ function authHeaders(token: string): HeadersInit {
   return { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
 }
 
+function fail(status: number, message: string): never {
+  // status travels with the error so callers can tell "offline" from "token expired"
+  throw Object.assign(new Error(message), { status })
+}
+
 export async function fetchProgress(token: string): Promise<ProgressSnapshot> {
   let res: Response
   try {
@@ -23,7 +28,7 @@ export async function fetchProgress(token: string): Promise<ProgressSnapshot> {
   } catch {
     throw new Error("Tidak bisa menghubungi server")
   }
-  if (!res.ok) throw new Error(`Request gagal (${res.status})`)
+  if (!res.ok) fail(res.status, `Request gagal (${res.status})`)
   const data = await res.json()
   if (!data || !Array.isArray(data.entries)) return { entries: [], current_scenario_id: null }
   return data as ProgressSnapshot
@@ -35,7 +40,7 @@ export async function setCurrentScenario(token: string, scenarioId: string): Pro
     headers: authHeaders(token),
     body: JSON.stringify({ scenario_id: scenarioId }),
   })
-  if (!res.ok) throw new Error(`Gagal menyimpan posisi task (${res.status})`)
+  if (!res.ok) fail(res.status, `Gagal menyimpan posisi task (${res.status})`)
 }
 
 export async function saveProgress(
@@ -50,7 +55,7 @@ export async function saveProgress(
     headers: authHeaders(token),
     body: JSON.stringify({ steps_done: stepsDone, completed, repo_state: repoState ?? null }),
   })
-  if (!res.ok) throw new Error(`Gagal menyimpan progres (${res.status})`)
+  if (!res.ok) fail(res.status, `Gagal menyimpan progres (${res.status})`)
 }
 
 /** Clear every pahamgit key from this browser (used on logout). */

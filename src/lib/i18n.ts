@@ -69,6 +69,7 @@ export const dict = {
     terminalLabel: "TERMINAL",
     taskLocked: "Task berikutnya terkunci",
     saveFailed: "Posisi task gagal disimpan. Coba lagi.",
+    syncOffline: "Progres belum tersimpan — server tidak terjangkau. Mencoba lagi…",
     loginFailed: "Gagal masuk",
   },
   en: {
@@ -136,6 +137,7 @@ export const dict = {
     terminalLabel: "TERMINAL",
     taskLocked: "Next task locked",
     saveFailed: "Could not save your position. Try again.",
+    syncOffline: "Progress not saved — server unreachable. Retrying…",
     loginFailed: "Login failed",
   },
 } satisfies Record<Lang, Record<string, string>>
